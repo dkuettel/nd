@@ -2,7 +2,7 @@
 set -eu -o pipefail
 
 if [[ -v nd ]]; then
-    exec nd run $@;
+    exec nd run ${@:-zsh};
 fi
 
-exec $@
+exec ${@:-zsh}
