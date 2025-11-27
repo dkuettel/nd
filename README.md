@@ -9,14 +9,14 @@ POC for an easy and fast `nix develop` workflow.
 -   `nd run ...` or `nd r ...` will run someting inside devShell.
 
 By default it looks for any flake in the current folder or a parent
-folder. All of the above command can also start with
+folder. All of the above commands can also be startsd with
 `nd at flakeref ...` to use a different flake. For example
 `nd at ~/fun/project run cargo --version` will use that devShell even
 when you are in a different folder. It takes normal flake references,
 just like `nix develop` does.
 
 The cache devShell is in `.nd`. You have to explicitely rebuild. It will
-only rebuild automatically if there is no cached devShell yet.
+only build automatically if there is no cached devShell yet.
 
 ## tmux
 
