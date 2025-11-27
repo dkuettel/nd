@@ -1,0 +1,10 @@
+#!/usr/bin/env zsh
+set -eu -o pipefail
+
+if [[ ${nd:-} == '' ]]; then
+    echo "No flake found at $PWD or up." >&2
+    exit 1
+fi
+
+mkdir -p $nd/.nd
+nix develop $nd --profile $nd/.nd/dev --command true

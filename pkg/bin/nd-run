@@ -1,0 +1,12 @@
+#!/usr/bin/env zsh
+set -eu -o pipefail
+
+if [[ ${nd:-} == '' ]]; then
+    echo "No flake found at $PWD or up." >&2
+    exit 1
+fi
+
+if [[ ! -e .nd/dev ]]; then
+    nd-build
+fi
+exec nix develop $nd/.nd/dev --command ${@:-zsh}

@@ -1,0 +1,13 @@
+#!/usr/bin/env zsh
+set -eu -o pipefail
+
+if [[ ! -v nd ]]; then
+    export nd=$(setopt extended_glob null_glob; echo (../)#flake.nix(:a:h))
+fi
+
+exec nd-${1:-shell} $@[2,-1]
+
+# NOTE problems
+# - we start zsh, so bash functions are gone
+# - but there are still a great many vars, some, like SHELL, is now wrong (not zsh)
+# - it doesnt point to symlinked and atomically switchable envs, its all directly into nix
