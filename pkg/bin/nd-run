@@ -6,6 +6,10 @@ if [[ ${nd:-} == '' ]]; then
     exit 1
 fi
 
+if [[ $nd == '-' ]]; then
+    exec ${@:-zsh}
+fi
+
 if [[ ! -e .nd/dev ]]; then
     nd-build
 fi
