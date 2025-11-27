@@ -20,7 +20,7 @@ only build automatically if there is no cached devShell yet.
 
 ## tmux
 
-Set the `default-shell` of tmux to `tmux-nd-shell`.
+Set the `default-shell` of tmux to `tmux-nd-shell`. In tmux.conf:
 
 ``` tmux
 run-shell -b 'tmux set-option -g default-shell `which tmux-nd-shell`'
