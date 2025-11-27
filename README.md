@@ -20,9 +20,14 @@ only build automatically if there is no cached devShell yet.
 
 ## tmux
 
-Set the `default-shell` of tmux to `tmux-nd-shell`. Then run a tmux
-session with the env var `nd` set to the project's flake folder. Every
-shell inside that tmux session will now be a devShell.
+Set the `default-shell` of tmux to `tmux-nd-shell`.
+
+``` tmux
+run-shell -b 'tmux set-option -g default-shell `which tmux-nd-shell`'
+```
+
+Then run a tmux session with the env var `nd` set to the project's flake
+folder. Every shell inside that tmux session will now be a devShell.
 
 ``` bash
 tmux new-session -e nd=~/fun/project
