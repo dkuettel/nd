@@ -6,5 +6,12 @@ if [[ ${nd:-} == '' ]]; then
     exit 1
 fi
 
-mkdir -p $nd/.nd
-nix develop $nd --profile $nd/.nd/dev --command true
+# TODO maybe there is some nix cli utility to parse this?
+if [[ $nd =~ 'path:(.*)' ]]; then
+    f=$match[1]
+else
+    f=$nd
+fi
+
+mkdir -p $f/.nd
+nix develop $nd --profile $f/.nd/dev --command true
