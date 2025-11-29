@@ -6,6 +6,10 @@ if [[ ${nd:-} == '' ]]; then
     exit 1
 fi
 
+if [[ $nd == '-' ]]; then
+    exit
+fi
+
 # TODO maybe there is some nix cli utility to parse this?
 if [[ $nd =~ 'path:(.*)' ]]; then
     f=$match[1]

@@ -10,7 +10,14 @@ if [[ $nd == '-' ]]; then
     exec ${@:-zsh}
 fi
 
-if [[ ! -e .nd/dev ]]; then
+# TODO maybe there is some nix cli utility to parse this?
+if [[ $nd =~ 'path:(.*)' ]]; then
+    f=$match[1]
+else
+    f=$nd
+fi
+
+if [[ ! -e $f/.nd/dev ]]; then
     nd-build
 fi
-exec nix develop $nd/.nd/dev --command ${@:-zsh}
+exec nix develop $f/.nd/dev --command ${@:-zsh}
