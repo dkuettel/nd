@@ -58,3 +58,7 @@ If you have things you run on shortcuts within tmux, and if they should
 (sometimes) use `nd`, a convenient way is to map it to
 `nd env run something`. It will work no matter if `nd` is enabled or
 not.
+
+``` bash
+tmux bind-key g run-shell -b 'nd env run something --arg value'
+```
