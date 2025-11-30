@@ -70,11 +70,14 @@ function nd-tmux {
 
 function nd-at {
     _flake=$1
-    if [[ ! $_flake =~ '(path:)?(.*)(#.*)' ]]; then
-        echo "Cannot parse flake reference $_flake" >&2
-        exit 1
+    _folder=
+    if [[ $_flake != '-' ]]; then
+        if [[ ! $_flake =~ '(path:)?(.*)(#.*)' ]]; then
+            echo "Cannot parse flake reference $_flake" >&2
+            exit 1
+        fi
+        _folder=$match[2]
     fi
-    _folder=$match[2]
     nd-${2:-shell} $@[3,-1]
 }
 
