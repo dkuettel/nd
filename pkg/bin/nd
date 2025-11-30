@@ -1,8 +1,15 @@
 #!/usr/bin/env zsh
 set -eu -o pipefail
 
-local _flake  # a flake reference, only plain path or 'path:here/there', no other flake references are supported
-local _folder  # the folder of the flake reference, without 'path:', if the reference has it
+# a flake reference
+# only local flakes are allowed, eg
+# - ../somewhere/here
+# - ../somewhere/here#name
+# - path:../somewhere/here
+local _flake
+
+# the plain folder of the flake, without any 'path:' or '#name' elements
+local _folder
 
 function ensure-flake {
     if [[ $_flake == '' ]]; then
@@ -63,12 +70,11 @@ function nd-tmux {
 
 function nd-at {
     _flake=$1
-    # TODO maybe there is some nix cli utility to parse this?
-    if [[ $_flake =~ 'path:(.*)' ]]; then
-        _folder=$match[1]
-    else
-        _folder=$_flake
+    if [[ ! $_flake =~ '(path:)?(.*)#(.*)' ]]; then
+        echo "Cannot parse flake reference $_flake" >&2
+        exit 1
     fi
+    _folder=$match[2]
     nd-${2:-shell} $@[3,-1]
 }
 
