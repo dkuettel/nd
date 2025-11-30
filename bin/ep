@@ -1,0 +1,6 @@
+#!/usr/bin/env zsh
+set -eu -o pipefail
+
+cd ${0:a:h:h}
+
+es
