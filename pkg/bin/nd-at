@@ -1,4 +1,0 @@
-#!/usr/bin/env zsh
-set -eu -o pipefail
-
-nd=$1 exec nd $@[2,-1]

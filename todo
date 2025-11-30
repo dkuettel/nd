@@ -1,1 +1,4 @@
+- we start zsh, so bash functions are gone
+- but there are still a great many vars, some, like SHELL, is now wrong (not zsh)
+- it doesnt point to symlinked and atomically switchable envs, its all directly into nix
 - how to make a reusable tmux config for this?

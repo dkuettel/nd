@@ -1,4 +1,0 @@
-#!/usr/bin/env zsh
-set -eu -o pipefail
-
-exec nd-run zsh $@

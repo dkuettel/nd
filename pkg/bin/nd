@@ -1,13 +1,75 @@
 #!/usr/bin/env zsh
 set -eu -o pipefail
 
-if [[ ! -v nd ]]; then
-    export nd=$(setopt extended_glob null_glob; echo (../)#flake.nix(:a:h))
-fi
+local _flake  # a flake reference, only plain path or 'path:here/there', no other flake references are supported
+local _folder  # the folder of the flake reference, without 'path:', if the reference has it
 
-exec nd-${1:-shell} $@[2,-1]
+function ensure-flake {
+    if [[ $_flake == '' ]]; then
+        _flake=$(setopt extended_glob null_glob; echo (../)#flake.nix(:a:h))
+        _folder=$_flake
+        if [[ $_flake == '' ]]; then
+            echo "No flake found at $PWD or up." >&2
+            exit 1
+        fi
+    fi
+}
 
-# NOTE problems
-# - we start zsh, so bash functions are gone
-# - but there are still a great many vars, some, like SHELL, is now wrong (not zsh)
-# - it doesnt point to symlinked and atomically switchable envs, its all directly into nix
+function nd-build nd-b {
+    ensure-flake
+    if [[ $_flake != '-' ]]; then
+        mkdir -p $_folder/.nd
+        nix develop $_flake --profile $_folder/.nd/dev --command true
+    fi
+}
+
+function nd-run nd-r {
+    ensure-flake
+
+    if [[ $_flake == '-' ]]; then
+        exec ${@:-zsh}
+    fi
+
+    if [[ ! -e $_folder/.nd/dev ]]; then
+        nd-build
+    fi
+
+    if [[ -v nd ]]; then
+        nd=$_folder:$nd
+    else
+        export nd=$_folder
+    fi
+
+    exec nix develop $_folder/.nd/dev --command ${@:-zsh}
+}
+
+function nd-shell nd-s {
+    nd-run zsh $@
+}
+
+function nd-env {
+    nd-at ${nd_env:--} $@
+}
+
+function nd-tmux {
+    [[ ! -v TMUX ]]
+    ensure-flake
+    if [[ $_flake == '-' ]]; then
+        exec tmux new-session $@
+    else
+        exec tmux new-session -e nd_env=$_flake $@
+    fi
+}
+
+function nd-at {
+    _flake=$1
+    # TODO maybe there is some nix cli utility to parse this?
+    if [[ $_flake =~ 'path:(.*)' ]]; then
+        _folder=$match[1]
+    else
+        _folder=$_flake
+    fi
+    nd-${2:-shell} $@[3,-1]
+}
+
+nd-${1:-shell} $@[2,-1]

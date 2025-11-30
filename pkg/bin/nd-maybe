@@ -1,8 +1,0 @@
-#!/usr/bin/env zsh
-set -eu -o pipefail
-
-if [[ -v nd ]]; then
-    exec nd run ${@:-zsh};
-fi
-
-exec ${@:-zsh}
