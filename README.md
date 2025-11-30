@@ -50,7 +50,8 @@ devShell.
 tmux new-session -e nd_env=$HOME/fun/project
 ```
 
-Note that you cannot use `~` here, it won't be expanded.
+Note that you cannot use `~` here, it won't be expanded. That is `zsh`
+behaviour, not `nd` behaviour.
 
 Or use `nd tmux` to start an `nd`-enabled session. Note that the
 session's folder will be the current folder, but the session's nd flake
