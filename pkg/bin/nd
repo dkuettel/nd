@@ -72,7 +72,7 @@ function nd-at {
     _flake=$1
     _folder=
     if [[ $_flake != '-' ]]; then
-        if [[ ! $_flake =~ '(path:)?(.*)(#.*)' ]]; then
+        if [[ ! $_flake =~ '(path:)?(.*)(#.*)?' ]]; then
             echo "Cannot parse flake reference $_flake" >&2
             exit 1
         fi
