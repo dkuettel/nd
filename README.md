@@ -7,7 +7,7 @@ tmux.
 
 -   `nd build` or `nd b` will build a devShell.
 -   `nd shell` or `nd s` or `nd` will start a devShell.
--   `nd run something` or `nd r something` will run `someting` inside a
+-   `nd run something` or `nd r something` will run `something` inside a
     devShell.
 
 By default it looks for any flake in the current folder or a parent
@@ -19,9 +19,9 @@ to use a different flake. For example
 when you are in a different folder. Only local flake references are
 allowed:
 
--   ../somewhere/here
--   ../somewhere/here#name
--   path:../somewhere/here
+-   `../somewhere/here`
+-   `../somewhere/here#name`
+-   `path:../somewhere/here`
 
 Additionally, the flake reference `-` is allowed. It means no flake, and
 `nd run something` runs `something` normally, without a devShell.
