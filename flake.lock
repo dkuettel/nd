@@ -22,14 +22,14 @@
       "locked": {
         "lastModified": 1764522689,
         "narHash": "sha256-SqUuBFjhl/kpDiVaKLQBoD8TLD+/cTUzzgVFoaHrkqY=",
-        "owner": "nixos",
+        "owner": "dkuettel",
         "repo": "nixpkgs",
         "rev": "8bb5646e0bed5dbd3ab08c7a7cc15b75ab4e1d0f",
         "type": "github"
       },
       "original": {
-        "owner": "nixos",
-        "ref": "nixos-25.11",
+        "owner": "dkuettel",
+        "ref": "stable",
         "repo": "nixpkgs",
         "type": "github"
       }
