@@ -54,7 +54,7 @@ function nd-shell nd-s {
     nd-run zsh $@
 }
 
-function nd-env {
+function nd-env nd-e {
     nd-at ${nd_env:--} $@
 }
 
