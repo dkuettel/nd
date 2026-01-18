@@ -30,8 +30,7 @@ Alternatively, if there is an env var `nd_env`, then you can also use
 `nd env ...` or `nd e ...` to use the flake reference pointed at by
 `nd_env`. This is mostly useful for `tmux`, see below.
 `nd env run something` just runs `something` normally, if there is no
-`nd_env`. If `nd_env` is not set, `nd env ...` will behave like
-`nv at - ...` and just work.
+`nd_env`.
 
 The cached devShell is in `.nd`. You have to explicitely rebuild. It
 will only build automatically if there is no cached devShell yet. The
@@ -63,7 +62,7 @@ can be from a different place when using `nd at ~/other/place tmux`.
 
 If you have things you run on shortcuts within tmux, and if they should
 (sometimes) use `nd`, a convenient way is to map it to
-`nd env run something`. It will work no matter if `nd` is enabled or
+`nd env run something`. It will work no matter if `nd_env` is set or
 not.
 
 ``` bash
