@@ -37,6 +37,10 @@ will only build automatically if there is no cached devShell yet. The
 cached devShell's `.nd` will always be at the referenced flake's
 location, which is not necessarily your project's root.
 
+Remember that a flake's `shellHook` is run in the current directory, and
+not necessarily in the project root, and therefore something like
+`export PATH=$PWD/bin:$PATH` is not very robust.
+
 ## tmux
 
 Set the `default-shell` of tmux to `tmux-nd-shell`. In tmux.conf:
