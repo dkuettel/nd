@@ -1,4 +1,4 @@
-# nd
+# nd (nix develop)
 
 POC for an easy and fast `nix develop` workflow that works well with
 tmux.
