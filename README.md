@@ -27,12 +27,16 @@ Additionally, the flake reference `-` is allowed. It means no flake, and
 `nd run something` runs `something` normally, without a devShell.
 
 Alternatively, if there is an env var `nd_env`, then you can also use
-`nd env ...` to use the flake reference pointed at by `nd_env`. This is
-mostly useful for `tmux`, see below. `nd env run something` just runs
-`something` normally, if there is no `nd_env`.
+`nd env ...` or `nd e ...` to use the flake reference pointed at by
+`nd_env`. This is mostly useful for `tmux`, see below.
+`nd env run something` just runs `something` normally, if there is no
+`nd_env`. If `nd_env` is not set, `nd env ...` will behave like
+`nv at - ...` and just work.
 
 The cached devShell is in `.nd`. You have to explicitely rebuild. It
-will only build automatically if there is no cached devShell yet.
+will only build automatically if there is no cached devShell yet. The
+cached devShell's `.nd` will always be at the referenced flake's
+location, which is not necessarily your project's root.
 
 ## tmux
 
