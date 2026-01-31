@@ -64,7 +64,7 @@ function nd-tmux {
     if [[ $_flake == '-' ]]; then
         exec tmux new-session -s ${PWD:a:t} $@
     else
-        exec tmux new-session -s ${PWD:a:t} -e nd_env=$_flake $@
+        exec tmux new-session -s ${PWD:a:t} -e h=$PWD -e nd_env=$_flake $@
     fi
 }
 
