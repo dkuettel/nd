@@ -61,6 +61,7 @@ function nd-env nd-e {
 function nd-tmux {
     [[ ! -v TMUX ]]
     h=${1:-$PWD}
+    h=${h:a}
     cd $h
     ensure-flake
     if [[ $_flake == '-' ]]; then
