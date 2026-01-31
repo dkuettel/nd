@@ -60,11 +60,13 @@ function nd-env nd-e {
 
 function nd-tmux {
     [[ ! -v TMUX ]]
+    h=${1:-$PWD}
+    cd $h
     ensure-flake
     if [[ $_flake == '-' ]]; then
-        exec tmux new-session -s ${PWD:a:t} $@
+        exec tmux new-session -s ${h:a:t} $@
     else
-        exec tmux new-session -s ${PWD:a:t} -e h=$PWD -e nd_env=$_flake $@
+        exec tmux new-session -s ${h:a:t} -e h=$h -e nd_env=$_flake $@
     fi
 }
 

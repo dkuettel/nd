@@ -60,9 +60,11 @@ tmux new-session -e nd_env=$HOME/fun/project
 Note that you cannot use `~` here, it won't be expanded. That is `zsh`
 behaviour, not `nd` behaviour.
 
-Or use `nd tmux` to start an `nd`-enabled session. Note that the
-session's folder will be the current folder, but the session's nd flake
-can be from a different place when using `nd at ~/other/place tmux`.
+Or use `nd tmux [folder]` to start an `nd`-enabled session. The
+session's folder will be the current folder by default. The session's nd
+flake can be from a different place when using
+`nd at ~/other/place tmux`. Otherwise, it is searched upward from
+`[folder]`.
 
 If you have things you run on shortcuts within tmux, and if they should
 (sometimes) use `nd`, a convenient way is to map it to
