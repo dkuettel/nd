@@ -1,3 +1,4 @@
+- nd refresh or something? you can `exec nd shell` if you want to get the updated env, can we make that easier, or more obvious? or warn?
 - nd build might not know flake authentication as in the flake alias we have?
 - we start zsh, so bash functions are gone
 - but there are still a great many vars, some, like SHELL, is now wrong (not zsh)
