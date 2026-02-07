@@ -26,7 +26,8 @@ function nd-build nd-b {
     ensure-flake
     if [[ $_flake != '-' ]]; then
         mkdir -p $_folder/.nd
-        nix develop $_flake --profile $_folder/.nd/dev --command true
+        # double quiet doesnt warn about dirty git, but might hide other things?
+        nix develop $_flake --quiet --quiet --profile $_folder/.nd/dev --command true
     fi
 }
 
