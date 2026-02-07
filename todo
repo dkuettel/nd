@@ -1,3 +1,5 @@
+- nd env build is sometimes a bit slow ... in tmux startup
+    - is that just how it is?
 - could nd be nd itself now?
 - two nd at the same time build the same thing, can we lock that? can nix do it?
 - nd refresh or something? you can `exec nd shell` if you want to get the updated env, can we make that easier, or more obvious? or warn?
