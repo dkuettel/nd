@@ -1,6 +1,8 @@
 now:
+- something is wrong with my age checks when nested nds
 - all the checks now for age and lock and outdated could make it slow?
 - nd refresh or something? you can `exec nd shell` if you want to get the updated env, can we make that easier, or more obvious? or warn?
+    - exec nd shell might actually nest things, not really what we want
 - nd build might not know flake authentication as in the flake alias we have?
 - it doesnt point to symlinked and atomically switchable envs, its all directly into nix
 - how to make a reusable tmux config for this?
