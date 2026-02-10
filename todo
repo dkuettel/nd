@@ -1,8 +1,12 @@
 now:
 - indicate when you are on an old profile
-    - old because there is a new .nd/profile
-    - old because maybe it should be rebuild
-    - old because maybe we are using outdated dependencies (according to flup or so?)
+    x old because there is a new .nd/profile
+        x NIX_GCROOT=/nix/store/prvlfj4yij5vqrldf57hx5sh7g7n8bmf-nix-shell-env
+        x check it against realpath -e .nd/dev ?
+        - that must become some kind of zsh sourced support
+    x old because maybe it should be rebuild
+    x old because maybe we are using outdated dependencies (according to flup or so?)
+- all the checks now for age and lock and outdated could make it slow?
 - nd refresh or something? you can `exec nd shell` if you want to get the updated env, can we make that easier, or more obvious? or warn?
 - nd build might not know flake authentication as in the flake alias we have?
 - it doesnt point to symlinked and atomically switchable envs, its all directly into nix

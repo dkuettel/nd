@@ -24,11 +24,24 @@ function ensure-flake {
 
 function nd-build nd-b {
     ensure-flake
-    if [[ $_flake != '-' ]]; then
-        mkdir -p $_folder/.nd
-        # double quiet doesnt warn about dirty git, but might hide other things?
-        nix develop $_flake --quiet --quiet --profile $_folder/.nd/dev --command true
+
+    if [[ $_flake == '-' ]]; then
+        return
     fi
+
+    if which flup &>/dev/null && [[ -e $_folder/flake.lock ]]; then
+        flup --offline --quiet --quiet --output-lock-file $_folder/.nd/flup.lock $_flake
+        if ! diff $_folder/flake.lock $_folder/.nd/flup.lock &>/dev/null; then
+            echo
+            print -P -- '%F{1}%Snd: `flup` would change "flake.lock".%s%f'
+        fi
+        rm $_folder/.nd/flup.lock
+    fi
+
+    mkdir -p $_folder/.nd
+    # double --quiet doesnt warn about dirty git, but might hide other things too?
+    nix develop $_flake --quiet --quiet --profile $_folder/.nd/dev --command true
+    cp $_folder/flake.lock $_folder/.nd/flake.lock
 }
 
 function nd-run nd-r {
@@ -46,6 +59,16 @@ function nd-run nd-r {
         nd=$_folder:$nd
     else
         export nd=$_folder
+    fi
+
+    if [[ $(( $(date '+%s') - $(stat --format='%Y' $_folder/.nd/dev) > 7 * 24 * 60 * 60 )) == 1 ]]; then
+        echo
+        print -P -- '%F{1}%Snd: No rebuild since more than a week.%s%f'
+    fi
+
+    if [[ -e $_folder/flake.lock && -e $_folder/.nd/flake.lock ]] && ! diff $_folder/flake.lock $_folder/.nd/flake.lock; then
+        echo
+        print -P -- '%F{1}%Snd: Profile is from a different "flake.lock".%s%f'
     fi
 
     exec nix develop $_folder/.nd/dev --command ${@:-zsh}

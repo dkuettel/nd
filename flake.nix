@@ -16,6 +16,10 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        shell = pkgs.runCommandLocal "shell" { } ''
+          mkdir -p $out
+          ln -sfT ${./share} $out/share
+        '';
       in
       {
         packages.default = pkgs.stdenv.mkDerivation {
@@ -25,6 +29,7 @@
             cp -r $src $out
           '';
         };
+        packages.shell = shell;
         devShells.default = pkgs.mkShellNoCC {
           packages = with pkgs; [
             nil # nix language server
