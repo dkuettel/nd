@@ -25,6 +25,19 @@
             cp -r $src $out
           '';
         };
+        devShells.default = pkgs.mkShellNoCC {
+          packages = with pkgs; [
+            nil # nix language server
+            nixfmt-rfc-style # nixpkgs-fmt is deprecated
+          ];
+          shellHook = ''
+            if [[ -v h ]]; then
+              export PATH=$h/bin:$PATH;
+            else
+              echo 'Project root env var h is not set.' >&2
+            fi
+          '';
+        };
       }
     );
   # TODO lets see if we can offer more useful integration
