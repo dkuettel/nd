@@ -32,7 +32,7 @@ function nd-build nd-b {
     if which flupq &>/dev/null && [[ -e $_folder/flake.lock ]]; then
         mkdir -p $_folder/.nd
         flupq --offline --quiet --quiet --output-lock-file $_folder/.nd/flup.lock --flake $_flake
-        if [[ -e _folder/.nd/flup.lock ]]; then
+        if [[ -e $_folder/.nd/flup.lock ]]; then
             if ! diff $_folder/flake.lock $_folder/.nd/flup.lock &>/dev/null; then
                 echo
                 print -P -- '%F{1}%Snd: `flup` would change "flake.lock".%s%f'
