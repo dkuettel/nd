@@ -29,14 +29,18 @@ function nd-build nd-b {
         return
     fi
 
-    if which flup &>/dev/null && [[ -e $_folder/flake.lock ]]; then
+    if which flupq &>/dev/null && [[ -e $_folder/flake.lock ]]; then
         mkdir -p $_folder/.nd
-        flup --offline --quiet --quiet --output-lock-file $_folder/.nd/flup.lock --flake $_flake
-        if ! diff $_folder/flake.lock $_folder/.nd/flup.lock &>/dev/null; then
-            echo
-            print -P -- '%F{1}%Snd: `flup` would change "flake.lock".%s%f'
+        flupq --offline --quiet --quiet --output-lock-file $_folder/.nd/flup.lock --flake $_flake
+        if [[ -e _folder/.nd/flup.lock ]]; then
+            if ! diff $_folder/flake.lock $_folder/.nd/flup.lock &>/dev/null; then
+                echo
+                print -P -- '%F{1}%Snd: `flup` would change "flake.lock".%s%f'
+            fi
+            rm $_folder/.nd/flup.lock
+        else
+            print -P -- '%F{1}%Snd: `flup` didnt produce a lock file.%s%f'
         fi
-        rm $_folder/.nd/flup.lock
     fi
 
     mkdir -p $_folder/.nd
