@@ -30,6 +30,7 @@ function nd-build nd-b {
     fi
 
     if which flup &>/dev/null && [[ -e $_folder/flake.lock ]]; then
+        mkdir -p $_folder/.nd
         flup --offline --quiet --quiet --output-lock-file $_folder/.nd/flup.lock --flake $_flake
         if ! diff $_folder/flake.lock $_folder/.nd/flup.lock &>/dev/null; then
             echo
