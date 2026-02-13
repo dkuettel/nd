@@ -10,7 +10,7 @@ function __nd_prompt_precmd {
     local nds=(${(s.:.)nd})
     local at=$nds[1]
 
-    if [[ $(realpath $nd/.nd/dev) == ${NIX_GCROOT:-} ]]; then
+    if [[ -e $nd/.nd/dev && $(realpath $nd/.nd/dev) == ${NIX_GCROOT:-} ]]; then
         return
     fi
 
