@@ -31,6 +31,7 @@ function nd-build nd-b {
 
     if which flupq &>/dev/null && [[ -e $_folder/flake.lock ]]; then
         mkdir -p $_folder/.nd
+        # TODO --offline seems to do nothing in `flake update`, it still downloads stuff and is slow
         flupq --offline --quiet --quiet --output-lock-file $_folder/.nd/flup.lock --flake $_flake
         if [[ -e $_folder/.nd/flup.lock ]]; then
             if ! diff $_folder/flake.lock $_folder/.nd/flup.lock &>/dev/null; then
@@ -41,6 +42,20 @@ function nd-build nd-b {
         else
             print -P -- '%F{1}%Snd: `flup` didnt produce a lock file.%s%f'
         fi
+    fi
+
+    mkdir -p $_folder/.nd
+    # double --quiet doesnt warn about dirty git, but might hide other things too?
+    nix develop $_flake --quiet --quiet --profile $_folder/.nd/dev $@ --command true
+    cp $_folder/flake.lock $_folder/.nd/flake.lock
+}
+
+# TODO "quick-build", until we have a better solution for the slow flup
+function nd-qbuild nd-qb {
+    ensure-flake
+
+    if [[ $_flake == '-' ]]; then
+        return
     fi
 
     mkdir -p $_folder/.nd
