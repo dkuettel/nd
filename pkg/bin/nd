@@ -45,7 +45,7 @@ function nd-build nd-b {
 
     mkdir -p $_folder/.nd
     # double --quiet doesnt warn about dirty git, but might hide other things too?
-    nix develop $_flake --quiet --quiet --profile $_folder/.nd/dev --command true
+    nix develop $_flake --quiet --quiet --profile $_folder/.nd/dev $@ --command true
     cp $_folder/flake.lock $_folder/.nd/flake.lock
 }
 
