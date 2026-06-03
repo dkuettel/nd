@@ -2,7 +2,7 @@
   description = "POC for an easy and fast `nix develop` workflow.";
 
   inputs = {
-    nixpkgs.url = "github:dkuettel/nixpkgs/stable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
