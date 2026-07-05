@@ -3,6 +3,9 @@ set -eu -o pipefail
 
 if [[ -v nd_verbose ]]; then
     set -x
+    local nix_develop_args=(--debug)
+else
+    local nix_develop_args=()
 fi
 
 # a flake reference
@@ -95,7 +98,8 @@ function nd-run nd-r {
         print -P -- '%F{1}%Snd: Profile is from a different "flake.lock".%s%f'
     fi
 
-    exec nix develop $_folder/.nd/dev --command ${@:-zsh}
+    # TODO --offline for faster?
+    exec nix develop $nix_develop_args $_folder/.nd/dev --command ${@:-zsh}
 }
 
 function nd-shell nd-s {
