@@ -1,6 +1,10 @@
 #!/usr/bin/env zsh
 set -eu -o pipefail
 
+if [[ -v nd_verbose ]]; then
+    set -x
+fi
+
 # a flake reference
 # only local flakes are allowed, eg
 # - ../somewhere/here
