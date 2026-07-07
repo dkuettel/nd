@@ -3,6 +3,7 @@ set -eu -o pipefail
 
 if [[ -v nd_verbose ]]; then
     set -x
+    # TODO currently not used anymore, if the approach with `nix print-dev-env` works, remove this
     local nix_develop_args=(--debug --verbose --print-build-logs --log-format raw)
 else
     local nix_develop_args=()
