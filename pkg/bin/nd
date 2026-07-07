@@ -20,13 +20,28 @@ local _flake
 local _folder
 
 function ensure-flake {
-    if [[ $_flake == '' ]]; then
-        _flake=$(setopt extended_glob null_glob; echo (../)#flake.nix(:a:h))
-        _folder=$_flake
-        if [[ $_flake == '' ]]; then
-            echo "No flake found at $PWD or up." >&2
-            exit 1
+    if [[ $_flake != '' ]]; then
+        return
+    fi
+
+    if [[ -v nd_env ]]; then
+        _flake=$nd_env
+        _folder=
+        if [[ $_flake != '-' ]]; then
+            if [[ ! $_flake =~ '(path:)?(.*)(#.*)?' ]]; then
+                echo "Cannot parse flake reference $_flake" >&2
+                exit 1
+            fi
+            _folder=$match[2]
         fi
+        return
+    fi
+
+    _flake=$(setopt extended_glob null_glob; echo (../)#flake.nix(:a:h))
+    _folder=$_flake
+    if [[ $_flake == '' ]]; then
+        echo "No flake found at $PWD or up and no nd_env." >&2
+        exit 1
     fi
 }
 
