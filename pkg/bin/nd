@@ -122,7 +122,7 @@ function nd-run nd-r {
     # nix print-dev-env --offline $_folder/.nd/dev > $_folder/.nd/run
     # echo 'exec "$@"' >> $_folder/.nd/run
     # TODO print-dev-env is not totally the same as nix develop, for example NIX_GCROOT is not set
-    bash $_folder/.nd/run ${@:-zsh}
+    exec bash $_folder/.nd/run ${@:-zsh}
 }
 
 function nd-shell nd-s {
