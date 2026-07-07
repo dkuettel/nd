@@ -109,8 +109,12 @@ function nd-run nd-r {
 
     # TODO this leaves nix out of it and should always be fast?
     # but a bit hard to say if it's messy with my own variables or anything
-    source <(nix print-dev-env --offline $_folder/.nd/dev)
-    exec ${@:-zsh}
+    # TODO hm some things dont work for zsh :/ filter, ignore? bash and record?
+    #      at this point the json is easier, but not all vars from the json are actually applied
+    #      eg, HOME is there, marked export, but not done by print-dev-env
+    nix print-dev-env --offline $_folder/.nd/dev > $_folder/.nd/dev/run
+    echo 'exec "$@"' >> $_folder/.nd/run
+    bash $_folder/.nd/dev/run ${@:-zsh}
 }
 
 function nd-shell nd-s {
