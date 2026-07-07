@@ -10,8 +10,10 @@ tmux.
 - `nd run something` or `nd r something` will run `something` inside a
   devShell.
 
-By default it looks for any flake in the current folder or a parent
-folder, and it uses the default shell (`#default`).
+By default, it first looks at env var `nd_env` for a flake location, and
+then for any flake in the current folder or a parent folders. It uses
+the default shell (`#default`). These defaults can be circumvented with
+`nd at ...` and `nd env ...`, see below.
 
 All of the above commands can also be started with `nd at flakeref ...`
 to use a different flake. For example
