@@ -109,7 +109,7 @@ function nd-run nd-r {
 
     # TODO this leaves nix out of it and should always be fast?
     # but a bit hard to say if it's messy with my own variables or anything
-    eval <(nix print-dev-env --offline $_folder/.nd/dev)
+    source <(nix print-dev-env --offline $_folder/.nd/dev)
     exec ${@:-zsh}
 }
 
