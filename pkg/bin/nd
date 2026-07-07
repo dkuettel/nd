@@ -54,7 +54,9 @@ function nd-build nd-b {
 
     mkdir -p $_folder/.nd
     # double --quiet doesnt warn about dirty git, but might hide other things too?
-    nix develop $_flake --quiet --quiet --profile $_folder/.nd/dev $@ --command true
+    # TODO might produce more progress?: nix develop $_flake --quiet --quiet --profile $_folder/.nd/dev $@ --command true
+    nix print-dev-env --quiet --quiet --profile $_folder/.nd/dev $_flake > $_folder/.nd/run
+    echo 'exec "$@"' >> $_folder/.nd/run
     cp $_folder/flake.lock $_folder/.nd/flake.lock
 }
 
@@ -68,7 +70,9 @@ function nd-qbuild nd-qb {
 
     mkdir -p $_folder/.nd
     # double --quiet doesnt warn about dirty git, but might hide other things too?
-    nix develop $_flake --quiet --quiet --profile $_folder/.nd/dev $@ --command true
+    # nix develop $_flake --quiet --quiet --profile $_folder/.nd/dev $@ --command true
+    nix print-dev-env --quiet --quiet --profile $_folder/.nd/dev $_flake > $_folder/.nd/run
+    echo 'exec "$@"' >> $_folder/.nd/run
     cp $_folder/flake.lock $_folder/.nd/flake.lock
 }
 
@@ -79,7 +83,7 @@ function nd-run nd-r {
         exec ${@:-zsh}
     fi
 
-    if [[ ! -e $_folder/.nd/dev ]]; then
+    if [[ ! -e $_folder/.nd/run ]]; then
         nd-build
     fi
 
@@ -113,8 +117,8 @@ function nd-run nd-r {
     # TODO hm some things dont work for zsh :/ filter, ignore? bash and record?
     #      at this point the json is easier, but not all vars from the json are actually applied
     #      eg, HOME is there, marked export, but not done by print-dev-env
-    nix print-dev-env --offline $_folder/.nd/dev > $_folder/.nd/run
-    echo 'exec "$@"' >> $_folder/.nd/run
+    # nix print-dev-env --offline $_folder/.nd/dev > $_folder/.nd/run
+    # echo 'exec "$@"' >> $_folder/.nd/run
     bash $_folder/.nd/run ${@:-zsh}
 }
 
