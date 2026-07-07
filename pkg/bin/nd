@@ -114,7 +114,7 @@ function nd-run nd-r {
     #      eg, HOME is there, marked export, but not done by print-dev-env
     nix print-dev-env --offline $_folder/.nd/dev > $_folder/.nd/run
     echo 'exec "$@"' >> $_folder/.nd/run
-    bash $_folder/.nd/dev/run ${@:-zsh}
+    bash $_folder/.nd/run ${@:-zsh}
 }
 
 function nd-shell nd-s {
