@@ -56,6 +56,7 @@ function nd-build nd-b {
     # double --quiet doesnt warn about dirty git, but might hide other things too?
     # TODO might produce more progress?: nix develop $_flake --quiet --quiet --profile $_folder/.nd/dev $@ --command true
     nix print-dev-env --quiet --quiet --profile $_folder/.nd/dev $_flake > $_folder/.nd/run
+    echo 'export nd_nix='$(realpath $_folder/.nd/dev) >> $_folder/.nd/run
     echo 'exec "$@"' >> $_folder/.nd/run
     cp $_folder/flake.lock $_folder/.nd/flake.lock
 }
@@ -72,6 +73,7 @@ function nd-qbuild nd-qb {
     # double --quiet doesnt warn about dirty git, but might hide other things too?
     # nix develop $_flake --quiet --quiet --profile $_folder/.nd/dev $@ --command true
     nix print-dev-env --quiet --quiet --profile $_folder/.nd/dev $_flake > $_folder/.nd/run
+    echo 'export nd_nix='$(realpath $_folder/.nd/dev) >> $_folder/.nd/run
     echo 'exec "$@"' >> $_folder/.nd/run
     cp $_folder/flake.lock $_folder/.nd/flake.lock
 }
@@ -119,6 +121,7 @@ function nd-run nd-r {
     #      eg, HOME is there, marked export, but not done by print-dev-env
     # nix print-dev-env --offline $_folder/.nd/dev > $_folder/.nd/run
     # echo 'exec "$@"' >> $_folder/.nd/run
+    # TODO print-dev-env is not totally the same as nix develop, for example NIX_GCROOT is not set
     bash $_folder/.nd/run ${@:-zsh}
 }
 

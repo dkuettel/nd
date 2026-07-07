@@ -10,7 +10,8 @@ function __nd_prompt_precmd {
     local nds=(${(s.:.)nd})
     local at=$nds[1]
 
-    if [[ -e $nd/.nd/dev && $(realpath $nd/.nd/dev) == ${NIX_GCROOT:-} ]]; then
+    # NOTE NIX_GCROOT is not set when using print-dev-env, so we use our own
+    if [[ -e $nd/.nd/dev && $(realpath $nd/.nd/dev) == ${nd_nix:-} ]]; then
         return
     fi
 
