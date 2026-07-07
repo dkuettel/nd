@@ -101,7 +101,16 @@ function nd-run nd-r {
     # TODO --offline for faster?
     # TODO or maybe we just say we only do on demand, no automatic checks? could we keep a fork-server? but then again, the env json is not so difficult to use anyway
     #      we just need something we can source at the start? it just feels invasive this way
-    exec nix develop --offline $nix_develop_args $_folder/.nd/dev --command ${@:-zsh}
+    # TODO nix print-dev-env and --json, could be easier? does it behave the same? is it the same content as the json file anyway?
+    #      what if we change, will it fail while broken syntax?
+    #      can we detect changes? or make it on-demand?
+    #      add some nd_ vars in devShell to indicate if you want full or just the simple vars? its quite easy to source or parse
+    # exec nix develop --offline $nix_develop_args $_folder/.nd/dev --command ${@:-zsh}
+
+    # TODO this leaves nix out of it and should always be fast?
+    # but a bit hard to say if it's messy with my own variables or anything
+    eval <(nix print-dev-env --offline $_folder/.nd/dev)
+    exec ${@:-zsh}
 }
 
 function nd-shell nd-s {
