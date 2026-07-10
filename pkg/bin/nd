@@ -112,7 +112,17 @@ function nd-run nd-r {
         export nd=$_folder
     fi
 
-    if [[ $(( $(date '+%s') - $(stat --format='%Y' $_folder/.nd/dev) > 7 * 24 * 60 * 60 )) == 1 ]]; then
+    local last_build
+    if [[ $OSTYPE == linux-gnu ]]; then
+        last_build=$(stat --format='%Y' $_folder/.nd/dev)
+    elif [[ $OSTYPE == darwin* ]]; then
+        last_build=$(stat -f '%m' $_folder/.nd/dev)
+    else
+        echo "Unknown OSTYPE $OSTYPE." >&2
+        exit 1
+    fi
+
+    if [[ $(( $(date '+%s') - $last_build > 7 * 24 * 60 * 60 )) == 1 ]]; then
         echo
         print -P -- '%F{1}%Snd: No rebuild since more than a week.%s%f'
     fi
