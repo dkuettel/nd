@@ -55,7 +55,14 @@ enum Commands {
 
     /// show general info
     #[command(visible_alias = "i")]
-    Info {},
+    Info {
+        /// force use of flake from env var `nd_env`, and fail otherwise
+        #[arg(short, long)]
+        env: bool,
+        /// use provided flake location, and fail otherwise
+        #[arg(short, long)]
+        flake: Option<PathBuf>,
+    },
 }
 
 // TODO should I use Path when not building?
@@ -136,13 +143,10 @@ fn run(folder: &Path, command: &Vec<String>) {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
-    println!("{:?}", args);
 
     match args.command {
         Commands::Build { env, flake } => {
             let at = resolve_flake(env, flake)?;
-            assert!(at.is_dir());
-            println!("{:?}", at);
             build(&at);
         }
         Commands::Run {
@@ -158,7 +162,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
             run(&at, &vec![shell]);
         }
-        Commands::Info {} => todo!(),
+        Commands::Info { env, flake } => {
+            let at = resolve_flake(env, flake)?;
+            let at = at.to_str().expect("The flake path should be utf8.");
+            println!("Resolving to flake at: {}", at);
+        }
     };
 
     Ok(())
