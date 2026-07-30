@@ -66,29 +66,36 @@ enum Commands {
 }
 
 // TODO should I use Path when not building?
-fn resolve_flake(env: bool, flake: Option<PathBuf>) -> Result<PathBuf, Box<dyn std::error::Error>> {
+fn resolve_flake(
+    env: bool,
+    flake: Option<PathBuf>,
+) -> Result<Option<PathBuf>, Box<dyn std::error::Error>> {
     // TODO can clap do that for us?
     assert!(
         flake.is_none() || !env,
         "Cannot not use --env and --flake at the same time."
     );
 
+    if let Some(at) = flake {
+        if at.to_str().expect("Flake path should be utf8.") == "-" {
+            return Ok(None);
+        } else {
+            return Ok(Some(at));
+        }
+    }
+
     if let Ok(at) = std::env::var("nd_env") {
-        return Ok(at.into());
+        return Ok(Some(at.into()));
     }
 
     if env {
         return Err("The env var `nd_env` should be set.".into());
     }
 
-    if let Some(at) = flake {
-        return Ok(at);
-    }
-
     for dir in std::env::current_dir()?.ancestors() {
         let at = dir.join("flake.nix");
         if at.is_file() {
-            return Ok(dir.into());
+            return Ok(Some(dir.into()));
         }
     }
 
@@ -134,11 +141,26 @@ fn build(folder: &Path) {
         .expect("Should have write access for the `.nd/run` script file.");
 }
 
-fn run(folder: &Path, command: &Vec<String>) {
-    let run = folder.join(".nd/run");
-    // TODO what happens with rusts cleanup if we exec?
-    let e = Command::new(run).args(command).exec();
-    panic!("Should be able to exec: {}", e);
+fn run(folder: Option<&Path>, command: &Vec<String>) {
+    if let Some(folder) = folder {
+        let run = folder.join(".nd/run");
+        // TODO what happens with rusts cleanup if we exec?
+        command
+            .first()
+            .expect("The command needs at least an executable.");
+        let e = Command::new(run).args(command).exec();
+        panic!("Should be able to exec: {}", e);
+    } else {
+        // TODO what happens with rusts cleanup if we exec?
+        let e = Command::new(
+            command
+                .first()
+                .expect("The command needs at least an executable."),
+        )
+        .args(&command[1..])
+        .exec();
+        panic!("Should be able to exec: {}", e);
+    };
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -146,26 +168,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match args.command {
         Commands::Build { env, flake } => {
-            let at = resolve_flake(env, flake)?;
-            build(&at);
+            if let Some(at) = resolve_flake(env, flake)? {
+                build(&at);
+            }
         }
         Commands::Run {
             env,
             flake,
             command,
         } => {
-            let at = resolve_flake(env, flake)?;
-            run(&at, &command);
+            if let Some(at) = resolve_flake(env, flake)? {
+                run(Some(&at), &command);
+            } else {
+                run(None, &command);
+            }
         }
         Commands::Shell { env, flake } => {
-            let at = resolve_flake(env, flake)?;
             let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
-            run(&at, &vec![shell]);
+            let command = vec![shell];
+            if let Some(at) = resolve_flake(env, flake)? {
+                run(Some(&at), &command);
+            } else {
+                run(None, &command);
+            }
         }
         Commands::Info { env, flake } => {
-            let at = resolve_flake(env, flake)?;
-            let at = at.to_str().expect("The flake path should be utf8.");
-            println!("Resolving to flake at: {}", at);
+            if let Some(at) = resolve_flake(env, flake)? {
+                let at = at.to_str().expect("The flake path should be utf8.");
+                println!("Resolving to flake at: {}", at);
+            } else {
+                println!("Resolving to no flake as requested: Pass through mode.");
+            }
         }
     };
 
