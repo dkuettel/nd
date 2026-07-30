@@ -1,6 +1,6 @@
 use std::{
     fs::{self, create_dir_all},
-    os::unix::fs::PermissionsExt,
+    os::unix::{fs::PermissionsExt, process::CommandExt},
     path::{Path, PathBuf},
     process::Command,
 };
@@ -30,7 +30,17 @@ enum Commands {
 
     /// run a command in the latest dev shell
     #[command(visible_alias = "r")]
-    Run {},
+    Run {
+        /// force use of flake from env var `nd_env`, and fail otherwise
+        #[arg(short, long)]
+        env: bool,
+        /// use provided flake location, and fail otherwise
+        #[arg(short, long)]
+        flake: Option<PathBuf>,
+        /// command to run
+        #[arg(last = true)]
+        command: Vec<String>,
+    },
 
     /// run an interactive dev shell
     #[command(visible_alias = "s")]
@@ -110,6 +120,13 @@ fn build(folder: &Path) {
         .expect("Should have write access for the `.nd/run` script file.");
 }
 
+fn run(folder: &Path, command: &Vec<String>) {
+    let run = folder.join(".nd/run");
+    // TODO what happens with rusts cleanup if we exec?
+    let e = Command::new(run).args(command).exec();
+    panic!("Should be able to exec: {}", e);
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
     println!("{:?}", args);
@@ -121,7 +138,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("{:?}", at);
             build(&at);
         }
-        Commands::Run {} => todo!(),
+        Commands::Run {
+            env,
+            flake,
+            command,
+        } => {
+            let at = resolve_flake(env, flake)?;
+            run(&at, &command);
+        }
         Commands::Shell {} => todo!(),
         Commands::Info {} => todo!(),
     };
