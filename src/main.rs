@@ -44,7 +44,14 @@ enum Commands {
 
     /// run an interactive dev shell
     #[command(visible_alias = "s")]
-    Shell {},
+    Shell {
+        /// force use of flake from env var `nd_env`, and fail otherwise
+        #[arg(short, long)]
+        env: bool,
+        /// use provided flake location, and fail otherwise
+        #[arg(short, long)]
+        flake: Option<PathBuf>,
+    },
 
     /// show general info
     #[command(visible_alias = "i")]
@@ -146,7 +153,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let at = resolve_flake(env, flake)?;
             run(&at, &command);
         }
-        Commands::Shell {} => todo!(),
+        Commands::Shell { env, flake } => {
+            let at = resolve_flake(env, flake)?;
+            let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
+            run(&at, &vec![shell]);
+        }
         Commands::Info {} => todo!(),
     };
 
