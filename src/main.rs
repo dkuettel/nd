@@ -1,5 +1,5 @@
 use std::{
-    fs::{self, create_dir_all},
+    fs,
     os::unix::{fs::PermissionsExt, process::CommandExt},
     path::{Path, PathBuf},
     process::Command,
@@ -100,7 +100,7 @@ fn build(folder: &Path) {
     let profile = folder.join(".nd/dev");
     let run = folder.join(".nd/run");
 
-    create_dir_all(nd).expect("Should be able to create the `.nd` folder.");
+    fs::create_dir_all(nd).expect("Should be able to create the `.nd` folder.");
 
     let output = Command::new("nix")
         .arg("print-dev-env")
