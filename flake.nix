@@ -54,7 +54,7 @@
         devShells.default = pkgs.mkShellNoCC {
           packages = with pkgs; [
             nil # nix language server
-            nixfmt-rfc-style # nixpkgs-fmt is deprecated
+            nixfmt # nix formatter
             rustToolchain
             # TODO what are the next 4 for? check with yves
             pkg-config
