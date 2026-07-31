@@ -44,9 +44,9 @@ enum Commands {
         /// first build if there is no ready environment yet
         #[arg(short, long)]
         build_if_missing: bool,
-        /// check and warn if the ready environment is potentially out-of-date
+        /// warn if the ready environment is potentially out-of-date
         #[arg(short, long)]
-        check: bool,
+        warn: bool,
     },
 
     /// run an interactive dev shell
@@ -58,9 +58,9 @@ enum Commands {
         /// use provided flake location, and fail otherwise
         #[arg(short, long)]
         flake: Option<PathBuf>,
-        /// check and warn if the ready environment is potentially out-of-date
+        /// warn if the ready environment is potentially out-of-date
         #[arg(short, long)]
-        check: bool,
+        warn: bool,
     },
 
     /// show general info
@@ -185,7 +185,7 @@ fn is_latest_lock_different(folder: &Path) -> Option<bool> {
     Some(current_data != latest_data)
 }
 
-fn check(folder: &Path) {
+fn maybe_warn(folder: &Path) {
     match is_latest_build_old(folder) {
         Some(false) => {}
         Some(true) => println!("The last build is more than 7 days old."),
@@ -234,26 +234,26 @@ fn main() {
             flake,
             command,
             build_if_missing,
-            check,
+            warn,
         } => {
             if let Some(at) = resolve_flake(env, flake.as_deref()) {
                 if build_if_missing && !at.join(".nd/run").is_file() {
                     build(&at);
                 }
-                if check {
-                    self::check(&at);
+                if warn {
+                    maybe_warn(&at);
                 }
                 run(Some(&at), &command);
             } else {
                 run(None, &command);
             }
         }
-        Commands::Shell { env, flake, check } => {
+        Commands::Shell { env, flake, warn } => {
             let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
             let command = vec![shell];
             if let Some(at) = resolve_flake(env, flake.as_deref()) {
-                if check {
-                    self::check(&at);
+                if warn {
+                    maybe_warn(&at);
                 }
                 run(Some(&at), &command);
             } else {
