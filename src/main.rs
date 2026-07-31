@@ -65,22 +65,21 @@ enum Commands {
     },
 }
 
-// TODO should I use Path when not building?
 fn resolve_flake(
     env: bool,
-    flake: Option<PathBuf>,
+    folder: Option<&Path>,
 ) -> Result<Option<PathBuf>, Box<dyn std::error::Error>> {
     // TODO can clap do that for us?
     assert!(
-        flake.is_none() || !env,
+        folder.is_none() || !env,
         "Cannot not use --env and --flake at the same time."
     );
 
-    if let Some(at) = flake {
+    if let Some(at) = folder {
         if at.to_str().expect("Flake path should be utf8.") == "-" {
             return Ok(None);
         } else {
-            return Ok(Some(at));
+            return Ok(Some(at.into()));
         }
     }
 
@@ -168,7 +167,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match args.command {
         Commands::Build { env, flake } => {
-            if let Some(at) = resolve_flake(env, flake)? {
+            if let Some(at) = resolve_flake(env, flake.as_deref())? {
                 build(&at);
             }
         }
@@ -177,7 +176,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             flake,
             command,
         } => {
-            if let Some(at) = resolve_flake(env, flake)? {
+            if let Some(at) = resolve_flake(env, flake.as_deref())? {
                 run(Some(&at), &command);
             } else {
                 run(None, &command);
@@ -186,14 +185,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Shell { env, flake } => {
             let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
             let command = vec![shell];
-            if let Some(at) = resolve_flake(env, flake)? {
+            if let Some(at) = resolve_flake(env, flake.as_deref())? {
                 run(Some(&at), &command);
             } else {
                 run(None, &command);
             }
         }
         Commands::Info { env, flake } => {
-            if let Some(at) = resolve_flake(env, flake)? {
+            if let Some(at) = resolve_flake(env, flake.as_deref())? {
                 let at = at.to_str().expect("The flake path should be utf8.");
                 println!("Resolving to flake at: {}", at);
             } else {
