@@ -3,6 +3,7 @@ use std::{
     os::unix::{fs::PermissionsExt, process::CommandExt},
     path::{Path, PathBuf},
     process::Command,
+    time::{Duration, SystemTime},
 };
 
 use clap::{Parser, Subcommand};
@@ -43,6 +44,9 @@ enum Commands {
         /// first build if there is no ready environment yet
         #[arg(short, long)]
         build_if_missing: bool,
+        /// check and warn if the ready environment is potentially out-of-date
+        #[arg(short, long)]
+        check: bool,
     },
 
     /// run an interactive dev shell
@@ -160,6 +164,29 @@ fn build(folder: &Path) {
     fs::copy(lock, nd_lock).expect("There should be a flake.lock.");
 }
 
+fn check(folder: &Path) {
+    let profile = folder.join(".nd/dev");
+
+    let Ok(metadata) = profile.metadata() else {
+        println!("Cannot determine how recent the last build is.");
+        return;
+    };
+
+    let Ok(mtime) = metadata.modified() else {
+        println!("Cannot determine how recent the last build is.");
+        return;
+    };
+
+    let Ok(dt) = SystemTime::now().duration_since(mtime) else {
+        println!("Cannot determine how recent the last build is.");
+        return;
+    };
+
+    if dt > Duration::from_hours(7 * 24) {
+        println!("The last build is more than 7 days old.");
+    }
+}
+
 fn run(folder: Option<&Path>, command: &Vec<String>) {
     if let Some(folder) = folder {
         let run = folder.join(".nd/run");
@@ -196,10 +223,14 @@ fn main() {
             flake,
             command,
             build_if_missing,
+            check,
         } => {
             if let Some(at) = resolve_flake(env, flake.as_deref()) {
                 if build_if_missing && !at.join(".nd/run").is_file() {
                     build(&at);
+                }
+                if check {
+                    self::check(&at);
                 }
                 run(Some(&at), &command);
             } else {
