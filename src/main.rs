@@ -58,6 +58,9 @@ enum Commands {
         /// use provided flake location, and fail otherwise
         #[arg(short, long)]
         flake: Option<PathBuf>,
+        /// check and warn if the ready environment is potentially out-of-date
+        #[arg(short, long)]
+        check: bool,
     },
 
     /// show general info
@@ -164,26 +167,34 @@ fn build(folder: &Path) {
     fs::copy(lock, nd_lock).expect("There should be a flake.lock.");
 }
 
-fn check(folder: &Path) {
+fn is_latest_build_old(folder: &Path) -> Option<bool> {
     let profile = folder.join(".nd/dev");
+    let metadata = profile.metadata().ok()?;
+    let mtime = metadata.modified().ok()?;
+    let dt = SystemTime::now().duration_since(mtime).ok()?;
+    Some(dt > Duration::from_hours(7 * 24))
+}
 
-    let Ok(metadata) = profile.metadata() else {
-        println!("Cannot determine how recent the last build is.");
-        return;
-    };
+fn is_latest_lock_different(folder: &Path) -> Option<bool> {
+    let current = folder.join("flake.lock");
+    let current_data = fs::read(current).ok()?;
 
-    let Ok(mtime) = metadata.modified() else {
-        println!("Cannot determine how recent the last build is.");
-        return;
-    };
+    let latest = folder.join(".nd/flake.lock");
+    let latest_data = fs::read(latest).ok()?;
 
-    let Ok(dt) = SystemTime::now().duration_since(mtime) else {
-        println!("Cannot determine how recent the last build is.");
-        return;
-    };
+    Some(current_data != latest_data)
+}
 
-    if dt > Duration::from_hours(7 * 24) {
-        println!("The last build is more than 7 days old.");
+fn check(folder: &Path) {
+    match is_latest_build_old(folder) {
+        Some(false) => {}
+        Some(true) => println!("The last build is more than 7 days old."),
+        None => println!("Cannot determine how recent the last build is."),
+    }
+    match is_latest_lock_different(folder) {
+        Some(false) => {}
+        Some(true) => println!("Flake.lock has changed since the last build."),
+        None => println!("Cannot determine if flake.lock has changed."),
     }
 }
 
@@ -237,10 +248,13 @@ fn main() {
                 run(None, &command);
             }
         }
-        Commands::Shell { env, flake } => {
+        Commands::Shell { env, flake, check } => {
             let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
             let command = vec![shell];
             if let Some(at) = resolve_flake(env, flake.as_deref()) {
+                if check {
+                    self::check(&at);
+                }
                 run(Some(&at), &command);
             } else {
                 run(None, &command);
