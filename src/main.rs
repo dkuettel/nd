@@ -40,6 +40,9 @@ enum Commands {
         /// command to run
         #[arg(last = true)]
         command: Vec<String>,
+        /// first build if there is no ready environment yet
+        #[arg(short, long)]
+        build_if_missing: bool,
     },
 
     /// run an interactive dev shell
@@ -142,6 +145,10 @@ fn build(folder: &Path) {
 
     fs::set_permissions(&run, fs::Permissions::from_mode(0o755))
         .expect("Should have write access for the `.nd/run` script file.");
+
+    let lock = folder.join("flake.lock");
+    let nd_lock = folder.join(".nd/flake.lock");
+    fs::copy(lock, nd_lock).expect("There should be a flake.lock.");
 }
 
 fn run(folder: Option<&Path>, command: &Vec<String>) {
@@ -179,8 +186,12 @@ fn main() {
             env,
             flake,
             command,
+            build_if_missing,
         } => {
             if let Some(at) = resolve_flake(env, flake.as_deref()) {
+                if build_if_missing && !at.join(".nd/run").is_file() {
+                    build(&at);
+                }
                 run(Some(&at), &command);
             } else {
                 run(None, &command);
