@@ -233,6 +233,27 @@ fn run(folder: Option<&Path>, command: &Vec<String>) {
     };
 }
 
+fn cli_run(
+    env: bool,
+    flake: Option<&Path>,
+    command: &Vec<String>,
+    build_if_missing: bool,
+    warn: bool,
+    build: bool,
+) {
+    if let Some(at) = resolve_flake(env, flake) {
+        if build || (build_if_missing && !at.join(".nd/run").is_file()) {
+            self::build(&at);
+        }
+        if warn {
+            maybe_warn(&at);
+        }
+        run(Some(&at), command);
+    } else {
+        run(None, command);
+    }
+}
+
 fn main() {
     let args = Cli::parse();
 
@@ -250,17 +271,14 @@ fn main() {
             warn,
             build,
         } => {
-            if let Some(at) = resolve_flake(env, flake.as_deref()) {
-                if build || (build_if_missing && !at.join(".nd/run").is_file()) {
-                    self::build(&at);
-                }
-                if warn {
-                    maybe_warn(&at);
-                }
-                run(Some(&at), &command);
-            } else {
-                run(None, &command);
-            }
+            cli_run(
+                env,
+                flake.as_deref(),
+                &command,
+                build_if_missing,
+                warn,
+                build,
+            );
         }
         Commands::Shell {
             env,
@@ -271,17 +289,14 @@ fn main() {
         } => {
             let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
             let command = vec![shell];
-            if let Some(at) = resolve_flake(env, flake.as_deref()) {
-                if build || (build_if_missing && !at.join(".nd/run").is_file()) {
-                    self::build(&at);
-                }
-                if warn {
-                    maybe_warn(&at);
-                }
-                run(Some(&at), &command);
-            } else {
-                run(None, &command);
-            }
+            cli_run(
+                env,
+                flake.as_deref(),
+                &command,
+                build_if_missing,
+                warn,
+                build,
+            );
         }
         Commands::Info { env, flake } => {
             if let Some(at) = resolve_flake(env, flake.as_deref()) {
