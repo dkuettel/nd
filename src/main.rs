@@ -129,6 +129,7 @@ fn build(folder: &Path) {
         .canonicalize()
         .expect("Should be able to follow `.nd/dev` symlinks to the nix store.");
     let profile_str = profile.to_str().unwrap();
+    let folder_str = folder.to_str().unwrap();
 
     let mut script = String::new();
     script.push_str("#!/usr/bin/env bash\n");
@@ -138,6 +139,14 @@ fn build(folder: &Path) {
     );
     script.push_str("\n\n");
     script.push_str(format!("export nd_nix={}\n", profile_str).as_str());
+    script.push_str(
+        format!(
+            "if [[ -v nd ]]; then export nd={0}:$nd; else export nd={0}; fi\n",
+            folder_str
+        )
+        .as_str(),
+    );
+    script.push('\n');
     script.push_str("exec \"$@\"\n");
 
     fs::write(&run, script.as_str())
