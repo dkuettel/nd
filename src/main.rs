@@ -47,6 +47,11 @@ enum Commands {
         /// warn if the ready environment is potentially out-of-date
         #[arg(short, long)]
         warn: bool,
+        /// build before running (always, no attempt is made to figure out if a build is necessary
+        /// other than what nix does itself, which means at least the context is built and copied to
+        /// the nix store)
+        #[arg(short, long)]
+        build: bool,
     },
 
     /// run an interactive dev shell
@@ -58,9 +63,17 @@ enum Commands {
         /// use provided flake location, and fail otherwise
         #[arg(short, long)]
         flake: Option<PathBuf>,
+        /// first build if there is no ready environment yet
+        #[arg(short, long)]
+        build_if_missing: bool,
         /// warn if the ready environment is potentially out-of-date
         #[arg(short, long)]
         warn: bool,
+        /// build before running (always, no attempt is made to figure out if a build is necessary
+        /// other than what nix does itself, which means at least the context is built and copied to
+        /// the nix store)
+        #[arg(short, long)]
+        build: bool,
     },
 
     /// show general info
@@ -235,10 +248,11 @@ fn main() {
             command,
             build_if_missing,
             warn,
+            build,
         } => {
             if let Some(at) = resolve_flake(env, flake.as_deref()) {
-                if build_if_missing && !at.join(".nd/run").is_file() {
-                    build(&at);
+                if build || (build_if_missing && !at.join(".nd/run").is_file()) {
+                    self::build(&at);
                 }
                 if warn {
                     maybe_warn(&at);
@@ -248,10 +262,19 @@ fn main() {
                 run(None, &command);
             }
         }
-        Commands::Shell { env, flake, warn } => {
+        Commands::Shell {
+            env,
+            flake,
+            build_if_missing,
+            warn,
+            build,
+        } => {
             let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
             let command = vec![shell];
             if let Some(at) = resolve_flake(env, flake.as_deref()) {
+                if build || (build_if_missing && !at.join(".nd/run").is_file()) {
+                    self::build(&at);
+                }
                 if warn {
                     maybe_warn(&at);
                 }
