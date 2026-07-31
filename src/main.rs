@@ -65,10 +65,7 @@ enum Commands {
     },
 }
 
-fn resolve_flake(
-    env: bool,
-    folder: Option<&Path>,
-) -> Result<Option<PathBuf>, Box<dyn std::error::Error>> {
+fn resolve_flake(env: bool, folder: Option<&Path>) -> Option<PathBuf> {
     // TODO can clap do that for us?
     assert!(
         folder.is_none() || !env,
@@ -77,28 +74,35 @@ fn resolve_flake(
 
     if let Some(at) = folder {
         if at.to_str().expect("Flake path should be utf8.") == "-" {
-            return Ok(None);
+            return None;
         } else {
-            return Ok(Some(at.into()));
+            if !at.join("flake.nix").is_file() {
+                panic!("There should be a flake.nix at {}.", at.display());
+            }
+            return Some(at.into());
         }
     }
 
     if let Ok(at) = std::env::var("nd_env") {
-        return Ok(Some(at.into()));
+        let at: PathBuf = at.into();
+        if !at.join("flake.nix").is_file() {
+            panic!("There should be a flake.nix at {}.", at.display());
+        }
+        return Some(at);
     }
 
     if env {
-        return Err("The env var `nd_env` should be set.".into());
+        panic!("The env var `nd_env` should be set.");
     }
 
-    for dir in std::env::current_dir()?.ancestors() {
+    for dir in std::env::current_dir().unwrap().ancestors() {
         let at = dir.join("flake.nix");
         if at.is_file() {
-            return Ok(Some(dir.into()));
+            return Some(at);
         }
     }
 
-    Err("cannot find any flake".into())
+    panic!("Cannot find any flake around here.");
 }
 
 fn build(folder: &Path) {
@@ -162,12 +166,12 @@ fn run(folder: Option<&Path>, command: &Vec<String>) {
     };
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     let args = Cli::parse();
 
     match args.command {
         Commands::Build { env, flake } => {
-            if let Some(at) = resolve_flake(env, flake.as_deref())? {
+            if let Some(at) = resolve_flake(env, flake.as_deref()) {
                 build(&at);
             }
         }
@@ -176,7 +180,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             flake,
             command,
         } => {
-            if let Some(at) = resolve_flake(env, flake.as_deref())? {
+            if let Some(at) = resolve_flake(env, flake.as_deref()) {
                 run(Some(&at), &command);
             } else {
                 run(None, &command);
@@ -185,14 +189,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Shell { env, flake } => {
             let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
             let command = vec![shell];
-            if let Some(at) = resolve_flake(env, flake.as_deref())? {
+            if let Some(at) = resolve_flake(env, flake.as_deref()) {
                 run(Some(&at), &command);
             } else {
                 run(None, &command);
             }
         }
         Commands::Info { env, flake } => {
-            if let Some(at) = resolve_flake(env, flake.as_deref())? {
+            if let Some(at) = resolve_flake(env, flake.as_deref()) {
                 let at = at.to_str().expect("The flake path should be utf8.");
                 println!("Resolving to flake at: {}", at);
             } else {
@@ -200,6 +204,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     };
-
-    Ok(())
 }
