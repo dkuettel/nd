@@ -20,12 +20,10 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// build and save a dev shell in a profile for later use
-    // TODO make b an alias for `build this` the normal thing? same for run and co?
     #[command(visible_alias = "b")]
     Build {
-        /// which flake to use
         #[command(flatten)]
-        flake: Flake,
+        spec: FlakeSpec,
         /// no output, maybe
         #[arg(short, long)]
         quiet: bool,
@@ -34,13 +32,11 @@ enum Commands {
     /// run a command in the latest dev shell
     #[command(visible_alias = "r")]
     Run {
-        /// which flake to use
         #[command(flatten)]
-        flake: Flake,
+        spec: FlakeSpec,
         /// command to run
         #[arg(last = true)]
         command: Vec<String>,
-        /// opts
         #[command(flatten)]
         opts: RunOpts,
     },
@@ -48,57 +44,54 @@ enum Commands {
     /// run an interactive dev shell
     #[command(visible_alias = "s")]
     Shell {
-        /// which flake to use
         #[command(flatten)]
-        flake: Flake,
-        /// opts
+        spec: FlakeSpec,
         #[command(flatten)]
         opts: RunOpts,
     },
 
-    // TODO should also say things like which env vars are set, and if we are in an env right now
     /// show general info
     #[command(visible_alias = "i")]
     Info {
-        /// force use of flake from env var `nd_env`, and fail otherwise
-        #[arg(short, long)]
-        env: bool,
-        /// use provided flake location, and fail otherwise
-        #[arg(short, long)]
-        flake: Option<PathBuf>,
+        #[command(flatten)]
+        spec: FlakeSpec,
     },
 }
 
 #[derive(Args, Debug)]
 #[group(required = false, multiple = false)]
-struct Flake {
+struct FlakeSpec {
+    /// (default) first try env var `nd_env`, then try parent directories
+    #[arg(short = 'A', long, help_heading = "Flake specification")]
+    any: bool,
     /// find a flake here or in parent directories, don't use env var `nd_env`
-    #[arg(short = 'H', long)]
+    #[arg(short = 'H', long, help_heading = "Flake specification")]
     here: bool,
     /// force use of flake from env var `nd_env`, and fail otherwise
-    #[arg(short, long)]
+    #[arg(short, long, help_heading = "Flake specification")]
     env: bool,
     /// use provided flake location, and fail otherwise
-    #[arg(short, long)]
+    #[arg(short, long, help_heading = "Flake specification")]
     at: Option<PathBuf>,
 }
 
-impl Flake {
-    fn as_spec(self) -> FlakeSpec {
-        if let Some(at) = self.at {
-            return FlakeSpec::At { at };
+impl FlakeSpec {
+    fn as_flake(&self) -> Flake {
+        // TODO not validating yet if all args make sense
+        if let Some(ref at) = self.at {
+            return Flake::At { at: at.clone() };
         }
         if self.env {
-            return FlakeSpec::Env;
+            return Flake::Env;
         }
         if self.here {
-            return FlakeSpec::Here;
+            return Flake::Here;
         }
-        FlakeSpec::Default
+        Flake::Default
     }
 }
 
-enum FlakeSpec {
+enum Flake {
     Default,
     Here,
     Env,
@@ -121,12 +114,12 @@ struct RunOpts {
 }
 
 // TODO should we support pass-thru? i think we need it for tmux
-fn resolve_flake(spec: &FlakeSpec, quiet: bool) -> Option<PathBuf> {
-    let path = match spec {
-        FlakeSpec::Default {} => resolve_flake_default(),
-        FlakeSpec::Here {} => resolve_flake_here(),
-        FlakeSpec::Env {} => resolve_flake_env(),
-        FlakeSpec::At { at } => resolve_flake_at(at),
+fn resolve_flake(flake: &Flake, quiet: bool) -> Option<PathBuf> {
+    let path = match flake {
+        Flake::Default => resolve_flake_default(),
+        Flake::Here => resolve_flake_here(),
+        Flake::Env => resolve_flake_env(),
+        Flake::At { at } => resolve_flake_at(at),
     };
     if !quiet {
         match path {
@@ -285,8 +278,8 @@ fn run(folder: Option<&Path>, command: &[String]) {
     panic!("Should be able to exec: {}", e);
 }
 
-fn cli_run(flake: Flake, command: &[String], opts: &RunOpts) {
-    let spec = flake.as_spec();
+fn cli_run(spec: &FlakeSpec, command: &[String], opts: &RunOpts) {
+    let spec = spec.as_flake();
     if let Some(at) = resolve_flake(&spec, false) {
         if opts.build || (opts.build_if_missing && !at.join(".nd/run").is_file()) {
             self::build(&at, false);
@@ -306,28 +299,38 @@ fn main() {
     println!("{:?}", args);
 
     match args.command {
-        Commands::Build { flake, quiet } => {
-            let spec = flake.as_spec();
-            if let Some(at) = resolve_flake(&spec, quiet) {
+        Commands::Build { spec, quiet } => {
+            let flake = spec.as_flake();
+            if let Some(at) = resolve_flake(&flake, quiet) {
                 build(&at, quiet);
             }
         }
         Commands::Run {
-            flake,
+            spec,
             command,
             opts,
         } => {
-            cli_run(flake, &command, &opts);
+            cli_run(&spec, &command, &opts);
         }
-        Commands::Shell { flake, opts } => {
+        Commands::Shell { spec, opts } => {
             let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
             let command = vec![shell];
-            cli_run(flake, &command, &opts);
+            cli_run(&spec, &command, &opts);
         }
-        Commands::Info { env, flake } => {
-            if let Some(at) = resolve_flake(&FlakeSpec::Default, false) {
-                let at = at.to_str().expect("The flake path should be utf8.");
-                println!("Resolving to flake at: {}", at);
+        Commands::Info { spec } => {
+            println!(
+                "$nd_env: {}",
+                std::env::var("nd_env").unwrap_or("<not set>".into())
+            );
+            println!("$nd: {}", std::env::var("nd").unwrap_or("<not set>".into()));
+            println!(
+                "$nd_nix: {}",
+                std::env::var("nd_nix").unwrap_or("<not set>".into())
+            );
+            let flake = spec.as_flake();
+            if let Some(at) = resolve_flake(&flake, true) {
+                println!("Resolving to flake at: {}.", at.display());
+                maybe_warn(&at);
             } else {
                 println!("Resolving to no flake as requested: Pass through mode.");
             }
