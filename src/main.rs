@@ -221,7 +221,8 @@ fn run(folder: Option<&Path>, command: &[String]) {
     let (run, args): (OsString, &[String]) = if let Some(folder) = folder {
         (folder.join(".nd/run").into(), command)
     } else {
-        ((&command[0]).into(), &command[1..])
+        let (run, args) = command.split_first().unwrap();
+        (run.into(), args)
     };
 
     // TODO what happens with rusts cleanup if we exec?
