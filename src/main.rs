@@ -231,7 +231,7 @@ fn build(folder: &Path, quiet: bool) {
 
 fn is_latest_build_old(folder: &Path) -> Option<bool> {
     let profile = folder.join(".nd/dev");
-    let metadata = profile.metadata().ok()?;
+    let metadata = profile.symlink_metadata().ok()?;
     let mtime = metadata.modified().ok()?;
     let dt = SystemTime::now().duration_since(mtime).ok()?;
     Some(dt > Duration::from_hours(7 * 24))
