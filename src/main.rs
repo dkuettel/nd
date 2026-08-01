@@ -1,4 +1,5 @@
 use std::{
+    ffi::OsString,
     fs,
     os::unix::{fs::PermissionsExt, process::CommandExt},
     path::{Path, PathBuf},
@@ -211,32 +212,27 @@ fn maybe_warn(folder: &Path) {
     }
 }
 
-fn run(folder: Option<&Path>, command: &Vec<String>) {
-    if let Some(folder) = folder {
-        let run = folder.join(".nd/run");
-        // TODO what happens with rusts cleanup if we exec?
-        command
-            .first()
-            .expect("The command needs at least an executable.");
-        let e = Command::new(run).args(command).exec();
-        panic!("Should be able to exec: {}", e);
+fn run(folder: Option<&Path>, command: &[String]) {
+    assert!(
+        !command.is_empty(),
+        "The command needs at least an executable."
+    );
+
+    let (run, args): (OsString, &[String]) = if let Some(folder) = folder {
+        (folder.join(".nd/run").into(), command)
     } else {
-        // TODO what happens with rusts cleanup if we exec?
-        let e = Command::new(
-            command
-                .first()
-                .expect("The command needs at least an executable."),
-        )
-        .args(&command[1..])
-        .exec();
-        panic!("Should be able to exec: {}", e);
+        ((&command[0]).into(), &command[1..])
     };
+
+    // TODO what happens with rusts cleanup if we exec?
+    let e = Command::new(run).args(args).exec();
+    panic!("Should be able to exec: {}", e);
 }
 
 fn cli_run(
     env: bool,
     flake: Option<&Path>,
-    command: &Vec<String>,
+    command: &[String],
     build_if_missing: bool,
     warn: bool,
     build: bool,
