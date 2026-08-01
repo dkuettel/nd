@@ -7,7 +7,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about=None)]
@@ -19,64 +19,44 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// build and cache current flake for later use
+    /// build and save a dev shell in a profile for later use
+    // TODO make b an alias for `build this` the normal thing? same for run and co?
     #[command(visible_alias = "b")]
     Build {
-        /// force use of flake from env var `nd_env`, and fail otherwise
+        /// which flake to use
+        #[command(flatten)]
+        flake: Flake,
+        /// no output, maybe
         #[arg(short, long)]
-        env: bool,
-        /// use provided flake location, and fail otherwise
-        #[arg(short, long)]
-        flake: Option<PathBuf>,
+        quiet: bool,
     },
 
     /// run a command in the latest dev shell
     #[command(visible_alias = "r")]
     Run {
-        /// force use of flake from env var `nd_env`, and fail otherwise
-        #[arg(short, long)]
-        env: bool,
-        /// use provided flake location, and fail otherwise
-        #[arg(short, long)]
-        flake: Option<PathBuf>,
+        /// which flake to use
+        #[command(flatten)]
+        flake: Flake,
         /// command to run
         #[arg(last = true)]
         command: Vec<String>,
-        /// first build if there is no ready environment yet
-        #[arg(short, long)]
-        build_if_missing: bool,
-        /// warn if the ready environment is potentially out-of-date
-        #[arg(short, long)]
-        warn: bool,
-        /// build before running (always, no attempt is made to figure out if a build is necessary
-        /// other than what nix does itself, which means at least the context is built and copied to
-        /// the nix store)
-        #[arg(short, long)]
-        build: bool,
+        /// opts
+        #[command(flatten)]
+        opts: RunOpts,
     },
 
     /// run an interactive dev shell
     #[command(visible_alias = "s")]
     Shell {
-        /// force use of flake from env var `nd_env`, and fail otherwise
-        #[arg(short, long)]
-        env: bool,
-        /// use provided flake location, and fail otherwise
-        #[arg(short, long)]
-        flake: Option<PathBuf>,
-        /// first build if there is no ready environment yet
-        #[arg(short, long)]
-        build_if_missing: bool,
-        /// warn if the ready environment is potentially out-of-date
-        #[arg(short, long)]
-        warn: bool,
-        /// build before running (always, no attempt is made to figure out if a build is necessary
-        /// other than what nix does itself, which means at least the context is built and copied to
-        /// the nix store)
-        #[arg(short, long)]
-        build: bool,
+        /// which flake to use
+        #[command(flatten)]
+        flake: Flake,
+        /// opts
+        #[command(flatten)]
+        opts: RunOpts,
     },
 
+    // TODO should also say things like which env vars are set, and if we are in an env right now
     /// show general info
     #[command(visible_alias = "i")]
     Info {
@@ -89,57 +69,132 @@ enum Commands {
     },
 }
 
-fn resolve_flake(env: bool, folder: Option<&Path>) -> Option<PathBuf> {
-    // TODO can clap do that for us?
-    assert!(
-        folder.is_none() || !env,
-        "Cannot not use --env and --flake at the same time."
-    );
+#[derive(Args, Debug)]
+#[group(required = false, multiple = false)]
+struct Flake {
+    /// find a flake here or in parent directories, don't use env var `nd_env`
+    #[arg(short = 'H', long)]
+    here: bool,
+    /// force use of flake from env var `nd_env`, and fail otherwise
+    #[arg(short, long)]
+    env: bool,
+    /// use provided flake location, and fail otherwise
+    #[arg(short, long)]
+    at: Option<PathBuf>,
+}
 
-    if let Some(at) = folder {
-        if at.to_str().expect("Flake path should be utf8.") == "-" {
-            return None;
-        } else {
-            if !at.join("flake.nix").is_file() {
-                panic!("There should be a flake.nix at {}.", at.display());
-            }
-            return Some(at.into());
+impl Flake {
+    fn as_spec(self) -> FlakeSpec {
+        if let Some(at) = self.at {
+            return FlakeSpec::At { at };
+        }
+        if self.env {
+            return FlakeSpec::Env;
+        }
+        if self.here {
+            return FlakeSpec::Here;
+        }
+        FlakeSpec::Default
+    }
+}
+
+enum FlakeSpec {
+    Default,
+    Here,
+    Env,
+    At { at: PathBuf },
+}
+
+#[derive(Args, Debug)]
+struct RunOpts {
+    /// first build if there is no ready environment yet
+    #[arg(short = 'm', long)]
+    build_if_missing: bool,
+    /// warn if the ready environment is potentially out-of-date
+    #[arg(short, long)]
+    warn: bool,
+    /// build before running (always, no attempt is made to figure out if a build is necessary
+    /// other than what nix does itself, which means at least the context is built and copied to
+    /// the nix store)
+    #[arg(short, long)]
+    build: bool,
+}
+
+// TODO should we support pass-thru? i think we need it for tmux
+fn resolve_flake(spec: &FlakeSpec, quiet: bool) -> Option<PathBuf> {
+    let path = match spec {
+        FlakeSpec::Default {} => resolve_flake_default(),
+        FlakeSpec::Here {} => resolve_flake_here(),
+        FlakeSpec::Env {} => resolve_flake_env(),
+        FlakeSpec::At { at } => resolve_flake_at(at),
+    };
+    if !quiet {
+        match path {
+            Some(ref path) => println!("Using flake at {}.", path.display()),
+            None => println!("Using no flake, pass-through mode."),
         }
     }
+    path
+}
 
-    if let Ok(at) = std::env::var("nd_env") {
-        let at: PathBuf = at.into();
-        if !at.join("flake.nix").is_file() {
-            panic!("There should be a flake.nix at {}.", at.display());
-        }
-        return Some(at);
+fn resolve_flake_default() -> Option<PathBuf> {
+    if std::env::var("nd_env").is_ok() {
+        resolve_flake_env()
+    } else {
+        resolve_flake_here()
     }
+}
 
-    if env {
-        panic!("The env var `nd_env` should be set.");
-    }
-
+fn resolve_flake_here() -> Option<PathBuf> {
     for dir in std::env::current_dir().unwrap().ancestors() {
         let at = dir.join("flake.nix");
         if at.is_file() {
             return Some(at);
         }
     }
-
     panic!("Cannot find any flake around here.");
 }
 
-fn build(folder: &Path) {
+fn resolve_flake_env() -> Option<PathBuf> {
+    let at = std::env::var("nd_env").expect("The env var `nd_env` should be set.");
+    let at: PathBuf = at.into();
+    if !at.join("flake.nix").is_file() {
+        panic!("There should be a flake.nix at {}.", at.display());
+    }
+    Some(at)
+}
+
+fn resolve_flake_at(at: &Path) -> Option<PathBuf> {
+    if at.to_str().expect("Flake path should be utf8.") == "-" {
+        None
+    } else {
+        if !at.join("flake.nix").is_file() {
+            panic!("There should be a flake.nix at {}.", at.display());
+        }
+        Some(at.into())
+    }
+}
+
+fn build(folder: &Path, quiet: bool) {
     let nd = folder.join(".nd");
     let profile = folder.join(".nd/dev");
     let run = folder.join(".nd/run");
 
     fs::create_dir_all(nd).expect("Should be able to create the `.nd` folder.");
 
+    if !quiet {
+        println!("Building flake at {}.", folder.display());
+    }
+
+    let quiet_args = if quiet {
+        vec!["--quiet", "--quiet"]
+    } else {
+        vec![]
+    };
+
     let output = Command::new("nix")
         .arg("print-dev-env")
-        .arg("--quiet")
-        .arg("--quiet")
+        .args(quiet_args)
         .arg("--profile")
         .arg(&profile)
         .arg(folder)
@@ -230,19 +285,13 @@ fn run(folder: Option<&Path>, command: &[String]) {
     panic!("Should be able to exec: {}", e);
 }
 
-fn cli_run(
-    env: bool,
-    flake: Option<&Path>,
-    command: &[String],
-    build_if_missing: bool,
-    warn: bool,
-    build: bool,
-) {
-    if let Some(at) = resolve_flake(env, flake) {
-        if build || (build_if_missing && !at.join(".nd/run").is_file()) {
-            self::build(&at);
+fn cli_run(flake: Flake, command: &[String], opts: &RunOpts) {
+    let spec = flake.as_spec();
+    if let Some(at) = resolve_flake(&spec, false) {
+        if opts.build || (opts.build_if_missing && !at.join(".nd/run").is_file()) {
+            self::build(&at, false);
         }
-        if warn {
+        if opts.warn {
             maybe_warn(&at);
         }
         run(Some(&at), command);
@@ -254,49 +303,29 @@ fn cli_run(
 fn main() {
     let args = Cli::parse();
 
+    println!("{:?}", args);
+
     match args.command {
-        Commands::Build { env, flake } => {
-            if let Some(at) = resolve_flake(env, flake.as_deref()) {
-                build(&at);
+        Commands::Build { flake, quiet } => {
+            let spec = flake.as_spec();
+            if let Some(at) = resolve_flake(&spec, quiet) {
+                build(&at, quiet);
             }
         }
         Commands::Run {
-            env,
             flake,
             command,
-            build_if_missing,
-            warn,
-            build,
+            opts,
         } => {
-            cli_run(
-                env,
-                flake.as_deref(),
-                &command,
-                build_if_missing,
-                warn,
-                build,
-            );
+            cli_run(flake, &command, &opts);
         }
-        Commands::Shell {
-            env,
-            flake,
-            build_if_missing,
-            warn,
-            build,
-        } => {
+        Commands::Shell { flake, opts } => {
             let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
             let command = vec![shell];
-            cli_run(
-                env,
-                flake.as_deref(),
-                &command,
-                build_if_missing,
-                warn,
-                build,
-            );
+            cli_run(flake, &command, &opts);
         }
         Commands::Info { env, flake } => {
-            if let Some(at) = resolve_flake(env, flake.as_deref()) {
+            if let Some(at) = resolve_flake(&FlakeSpec::Default, false) {
                 let at = at.to_str().expect("The flake path should be utf8.");
                 println!("Resolving to flake at: {}", at);
             } else {
