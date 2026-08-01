@@ -77,7 +77,8 @@ struct FlakeSpec {
 
 impl FlakeSpec {
     fn as_flake(&self) -> Flake {
-        // TODO not validating yet if all args make sense
+        // TODO not validating yet if all args make sense, clap doesnt offer it in a typed manner I
+        // think
         if let Some(ref at) = self.at {
             return Flake::At { at: at.clone() };
         }
