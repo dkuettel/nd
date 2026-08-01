@@ -296,8 +296,6 @@ fn cli_run(spec: &FlakeSpec, command: &[String], opts: &RunOpts) {
 fn main() {
     let args = Cli::parse();
 
-    println!("{:?}", args);
-
     match args.command {
         Commands::Build { spec, quiet } => {
             let flake = spec.as_flake();
