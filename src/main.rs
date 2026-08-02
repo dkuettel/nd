@@ -193,7 +193,14 @@ fn build(folder: &Path, quiet: bool) {
         .arg(&profile)
         .arg(folder)
         .output()
-        .expect("Should run `nix print-dev-env` successfully.");
+        .expect("Should be able to run `nix`");
+
+    if !output.status.success() {
+        panic!(
+            "Should run `nix print-dev-env` successfully: {}",
+            String::from_utf8(output.stderr).unwrap_or(String::from("Cannot read stderr."))
+        );
+    }
 
     let profile = profile
         .canonicalize()
