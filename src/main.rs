@@ -328,7 +328,7 @@ fn main() {
             );
             let flake = spec.as_flake();
             if let Some(at) = resolve_flake(&flake, true) {
-                println!("Resolving to flake at: {}.", at.display());
+                println!("Resolving to flake at: {}", at.display());
                 maybe_warn(&at);
             } else {
                 println!("Resolving to no flake as requested: Pass through mode.");
