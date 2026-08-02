@@ -4,7 +4,11 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
-    rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay = {
+      # see https://github.com/oxalica/rust-overlay
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -17,25 +21,7 @@
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        overlays = [
-          (import rust-overlay)
-          (self: super: {
-            rustToolchain = pkgs.symlinkJoin {
-              name = "rust-toolchain";
-              paths = [
-                (super.rust-bin.stable.latest.minimal.override {
-                  extensions = [
-                    "clippy"
-                    "rust-analyzer"
-                    "rust-docs"
-                    "rust-src"
-                  ];
-                })
-                (super.rust-bin.selectLatestNightlyWith (toolchain: toolchain.rustfmt))
-              ];
-            };
-          })
-        ];
+        overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
         shell = pkgs.runCommandLocal "shell" { } ''
           mkdir -p $out
@@ -51,16 +37,17 @@
           '';
         };
         packages.shell = shell;
-        devShells.default = pkgs.mkShellNoCC {
+        devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             nil # nix language server
             nixfmt # nix formatter
-            rustToolchain
-            # TODO what are the next 4 for? check with yves
-            pkg-config
-            cargo-deny
-            cargo-edit
-            cargo-watch
+            (rust-bin.stable.latest.default.override {
+              # see https://rust-lang.github.io/rustup/concepts/components.html
+              extensions = [
+                "rust-src"
+                "rust-analyzer"
+              ];
+            })
           ];
           shellHook = ''
             if [[ -v h ]]; then
