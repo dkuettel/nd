@@ -43,6 +43,7 @@
             nixfmt # nix formatter
             (rust-bin.stable.latest.default.override {
               # see https://rust-lang.github.io/rustup/concepts/components.html
+              # and https://rust-lang.github.io/rustup/concepts/profiles.html
               extensions = [
                 "rust-src"
                 "rust-analyzer"
