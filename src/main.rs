@@ -208,23 +208,15 @@ fn build(folder: &Path, quiet: bool) {
     let profile_str = profile.to_str().unwrap();
     let folder_str = folder.to_str().unwrap();
 
-    let mut script = String::new();
-    script.push_str("#!/usr/bin/env bash\n");
-    script.push('\n');
-    script.push_str(
-        str::from_utf8(&output.stdout).expect("`nix print-dev-env` should produce utf8 output."),
+    let dev_env =
+        String::from_utf8(output.stdout).expect("`nix print-dev-env` should produce utf8 output.");
+    let script = format!(
+        "#!/usr/bin/env bash\n\n\
+         {dev_env}\n\n\
+         export nd_nix={profile_str}\n\
+         if [[ -v nd ]]; then export nd={folder_str}:$nd; else export nd={folder_str}; fi\n\n\
+         exec \"$@\"\n"
     );
-    script.push_str("\n\n");
-    script.push_str(format!("export nd_nix={}\n", profile_str).as_str());
-    script.push_str(
-        format!(
-            "if [[ -v nd ]]; then export nd={0}:$nd; else export nd={0}; fi\n",
-            folder_str
-        )
-        .as_str(),
-    );
-    script.push('\n');
-    script.push_str("exec \"$@\"\n");
 
     fs::write(&run, script.as_str())
         .expect("Should have write access for the `.nd/run` script file.");
