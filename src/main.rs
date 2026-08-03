@@ -268,6 +268,26 @@ fn maybe_warn(folder: &Path) {
     }
 }
 
+// NOTE this is the format of .nd/dev, and we could extract most of the env vars from this
+// but it is still difficult to know which ones we have to set, and which ones we have to append
+// and then there is also the shellHook, which requires us to run a script anyway, so maybe we cant
+// do much with this
+// #[derive(Deserialize, Debug)]
+// struct DevShell {
+//     #[serde(rename = "bashFunctions")]
+//     bash_functions: HashMap<String, String>,
+//     variables: HashMap<String, DevShellVariable>,
+// }
+// #[derive(Deserialize, Debug)]
+// #[serde(tag = "type")]
+// #[serde(rename_all = "lowercase")]
+// enum DevShellVariable {
+//     Exported { value: String },
+//     Var { value: String },
+//     Unknown { value: Option<String> },
+//     Array { value: Vec<String> },
+// }
+
 fn run(folder: Option<&Path>, command: &[String]) {
     assert!(
         !command.is_empty(),
