@@ -106,13 +106,16 @@ enum Commands {
         opts: RunOpts,
     },
 
-    /// run an interactive dev shell
+    /// run an interactive dev shell using $SHELL
     #[command(visible_alias = "s")]
     Shell {
         #[command(flatten)]
         spec: FlakeSpec,
         #[command(flatten)]
         opts: RunOpts,
+        /// additional args to the $SHELL executable
+        #[arg(last = true)]
+        args: Vec<String>,
     },
 
     /// show general info
@@ -400,9 +403,10 @@ fn main() {
         } => {
             cli_run(&spec, &command, &opts);
         }
-        Commands::Shell { spec, opts } => {
+        Commands::Shell { spec, opts, args } => {
             let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
-            let command = vec![shell];
+            let mut command = vec![shell];
+            command.extend_from_slice(&args);
             cli_run(&spec, &command, &opts);
         }
         Commands::Info { spec } => {
