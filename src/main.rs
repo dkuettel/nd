@@ -4,15 +4,80 @@ use std::{
     os::unix::{fs::PermissionsExt, process::CommandExt},
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    sync::OnceLock,
     time::{Duration, SystemTime},
 };
 
 use clap::{Args, Parser, Subcommand};
 
+#[derive(Debug)]
+enum Volume {
+    /// normal output
+    Normal,
+    /// very little output, "nice to watch"
+    Quiet,
+    /// no output at all
+    Silent,
+}
+
+impl Volume {
+    fn order(&self) -> u8 {
+        match self {
+            Volume::Normal => 1,
+            Volume::Quiet => 2,
+            Volume::Silent => 3,
+        }
+    }
+    fn includes(&self, vol: &Volume) -> bool {
+        self.order() <= vol.order()
+    }
+}
+
+static VOLUME: OnceLock<Volume> = OnceLock::new();
+
+fn set_volume(quiet: bool, silent: bool) {
+    let v = if silent {
+        Volume::Silent
+    } else if quiet {
+        Volume::Quiet
+    } else {
+        Volume::Normal
+    };
+    VOLUME.set(v).unwrap();
+}
+
+fn is_volume_included(vol: &Volume) -> bool {
+    VOLUME.get().unwrap_or(&Volume::Normal).includes(vol)
+}
+
+#[allow(unused_macros)]
+macro_rules! uprintln {
+    ($vol:expr, $($arg:tt)*) => {
+        if is_volume_included(&$vol) {
+            println!($($arg)*);
+        }
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! ueprintln {
+    ($vol:expr, $($arg:tt)*) => {
+        if is_volume_included(&$vol) {
+            eprintln!($($arg)*);
+        }
+    };
+}
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about=None)]
 #[command(infer_subcommands = true)]
 struct Cli {
+    /// little ouptut
+    #[arg(short, long)]
+    quiet: bool,
+    /// no output
+    #[arg(short, long)]
+    silent: bool,
     #[command(subcommand)]
     command: Commands,
 }
@@ -24,12 +89,6 @@ enum Commands {
     Build {
         #[command(flatten)]
         spec: FlakeSpec,
-        /// little ouptut
-        #[arg(short, long)]
-        quiet: bool,
-        /// no output
-        #[arg(short, long)]
-        silent: bool,
     },
 
     /// run a command in the latest dev shell
@@ -118,18 +177,16 @@ struct RunOpts {
 }
 
 // TODO should we support pass-thru? i think we need it for tmux
-fn resolve_flake(flake: &Flake, quiet: bool) -> Option<PathBuf> {
+fn resolve_flake(flake: &Flake) -> Option<PathBuf> {
     let path = match flake {
         Flake::Default => resolve_flake_default(),
         Flake::Here => resolve_flake_here(),
         Flake::Env => resolve_flake_env(),
         Flake::At { at } => resolve_flake_at(at),
     };
-    if !quiet {
-        match path {
-            Some(ref path) => println!("Using flake at {}.", path.display()),
-            None => println!("Using no flake, pass-through mode."),
-        }
+    match path {
+        Some(ref path) => uprintln!(Volume::Quiet, "Using flake at {}.", path.display()),
+        None => uprintln!(Volume::Quiet, "Using no flake, pass-through mode."),
     }
     path
 }
@@ -155,10 +212,7 @@ fn resolve_flake_here() -> Option<PathBuf> {
 fn resolve_flake_env() -> Option<PathBuf> {
     let at = std::env::var("nd_env").expect("The env var `nd_env` should be set.");
     let at: PathBuf = at.into();
-    if !at.join("flake.nix").is_file() {
-        panic!("There should be a flake.nix at {}.", at.display());
-    }
-    Some(at)
+    resolve_flake_at(&at)
 }
 
 fn resolve_flake_at(at: &Path) -> Option<PathBuf> {
@@ -172,16 +226,14 @@ fn resolve_flake_at(at: &Path) -> Option<PathBuf> {
     }
 }
 
-fn build(folder: &Path, quiet: bool, silent: bool) {
+fn build(folder: &Path) {
     let nd = folder.join(".nd");
     let profile = folder.join(".nd/dev");
     let run = folder.join(".nd/run");
 
     fs::create_dir_all(nd).expect("Should be able to create the `.nd` folder.");
 
-    if !quiet && !silent {
-        println!("Building flake at {}.", folder.display());
-    }
+    uprintln!(Volume::Normal, "Building flake at {}.", folder.display());
 
     let mut cmd = Command::new("nix");
 
@@ -190,24 +242,17 @@ fn build(folder: &Path, quiet: bool, silent: bool) {
         .arg(&profile)
         .arg(folder);
 
-    if !quiet && !silent {
+    if is_volume_included(&Volume::Normal) {
         cmd.stderr(Stdio::inherit());
     }
 
     let output = cmd.output().expect("Should be able to run `nix`");
 
     if !output.status.success() {
-        if silent {
-            panic!();
-        }
-        if quiet {
-            panic!(
-                "Running `nix print-dev-env` was not successful:\n{}",
-                String::from_utf8_lossy(&output.stderr),
-            );
-        } else {
-            panic!("Running `nix print-dev-env` was not successful.");
-        }
+        panic!(
+            "Running `nix print-dev-env` was not successful:\n{}",
+            String::from_utf8_lossy(&output.stderr),
+        );
     }
 
     let profile = profile
@@ -258,13 +303,22 @@ fn is_latest_lock_different(folder: &Path) -> Option<bool> {
 fn maybe_warn(folder: &Path) {
     match is_latest_build_old(folder) {
         Some(false) => {}
-        Some(true) => println!("The last build is more than 7 days old."),
-        None => println!("Cannot determine how recent the last build is."),
+        Some(true) => uprintln!(Volume::Normal, "The last build is more than 7 days old."),
+        None => uprintln!(
+            Volume::Normal,
+            "Cannot determine how recent the last build is."
+        ),
     }
     match is_latest_lock_different(folder) {
         Some(false) => {}
-        Some(true) => println!("Flake.lock has changed since the last build."),
-        None => println!("Cannot determine if flake.lock has changed."),
+        Some(true) => uprintln!(
+            Volume::Normal,
+            "Flake.lock has changed since the last build."
+        ),
+        None => uprintln!(
+            Volume::Normal,
+            "Cannot determine if flake.lock has changed."
+        ),
     }
 }
 
@@ -308,9 +362,9 @@ fn run(folder: Option<&Path>, command: &[String]) {
 
 fn cli_run(spec: &FlakeSpec, command: &[String], opts: &RunOpts) {
     let spec = spec.as_flake();
-    if let Some(at) = resolve_flake(&spec, false) {
+    if let Some(at) = resolve_flake(&spec) {
         if opts.build || (opts.build_if_missing && !at.join(".nd/run").is_file()) {
-            self::build(&at, false, false);
+            self::build(&at);
         }
         if opts.warn {
             maybe_warn(&at);
@@ -324,15 +378,13 @@ fn cli_run(spec: &FlakeSpec, command: &[String], opts: &RunOpts) {
 fn main() {
     let args = Cli::parse();
 
+    set_volume(args.quiet, args.silent);
+
     match args.command {
-        Commands::Build {
-            spec,
-            quiet,
-            silent,
-        } => {
+        Commands::Build { spec } => {
             let flake = spec.as_flake();
-            if let Some(at) = resolve_flake(&flake, quiet) {
-                build(&at, quiet, silent);
+            if let Some(at) = resolve_flake(&flake) {
+                build(&at);
             }
         }
         Commands::Run {
@@ -348,21 +400,30 @@ fn main() {
             cli_run(&spec, &command, &opts);
         }
         Commands::Info { spec } => {
-            println!(
+            uprintln!(
+                Volume::Normal,
                 "$nd_env: {}",
                 std::env::var("nd_env").unwrap_or("<not set>".into())
             );
-            println!("$nd: {}", std::env::var("nd").unwrap_or("<not set>".into()));
-            println!(
+            uprintln!(
+                Volume::Normal,
+                "$nd: {}",
+                std::env::var("nd").unwrap_or("<not set>".into())
+            );
+            uprintln!(
+                Volume::Normal,
                 "$nd_nix: {}",
                 std::env::var("nd_nix").unwrap_or("<not set>".into())
             );
             let flake = spec.as_flake();
-            if let Some(at) = resolve_flake(&flake, true) {
-                println!("Resolving to flake at: {}", at.display());
+            if let Some(at) = resolve_flake(&flake) {
+                uprintln!(Volume::Normal, "Resolving to flake at: {}", at.display());
                 maybe_warn(&at);
             } else {
-                println!("Resolving to no flake as requested: Pass through mode.");
+                uprintln!(
+                    Volume::Normal,
+                    "Resolving to no flake as requested: Pass through mode."
+                );
             }
         }
     };
