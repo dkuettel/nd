@@ -91,7 +91,7 @@ enum Commands {
         spec: FlakeSpec,
         /// only build if missing
         #[arg(short = 'm', long)]
-        build_if_missing: bool,
+        if_missing: bool,
     },
 
     /// run a command in the latest dev shell
@@ -384,13 +384,10 @@ fn main() {
     set_volume(args.quiet, args.silent);
 
     match args.command {
-        Commands::Build {
-            spec,
-            build_if_missing,
-        } => {
+        Commands::Build { spec, if_missing } => {
             let flake = spec.as_flake();
             if let Some(at) = resolve_flake(&flake) {
-                if build_if_missing && at.join(".nd/run").is_file() {
+                if if_missing && at.join(".nd/run").is_file() {
                     return;
                 }
                 build(&at);
