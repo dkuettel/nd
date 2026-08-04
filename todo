@@ -1,4 +1,6 @@
 now:
+- i still need what pmux does in the beginning, make it in rust? a warmstart or so?
+- and also the tmux entry point that can also work for an unset nd_env for normal operation
 - $SHELL is bash after entering, not sure we want that, custom overwrite?
 - something is wrong with my age checks when nested nds
 - all the checks now for age and lock and outdated could make it slow?
