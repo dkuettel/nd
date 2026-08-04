@@ -3,7 +3,7 @@ use std::{
     fs,
     os::unix::{fs::PermissionsExt, process::CommandExt},
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
     time::{Duration, SystemTime},
 };
 
@@ -24,9 +24,12 @@ enum Commands {
     Build {
         #[command(flatten)]
         spec: FlakeSpec,
-        /// no output, maybe
+        /// little ouptut
         #[arg(short, long)]
         quiet: bool,
+        /// no output
+        #[arg(short, long)]
+        silent: bool,
     },
 
     /// run a command in the latest dev shell
@@ -169,37 +172,42 @@ fn resolve_flake_at(at: &Path) -> Option<PathBuf> {
     }
 }
 
-fn build(folder: &Path, quiet: bool) {
+fn build(folder: &Path, quiet: bool, silent: bool) {
     let nd = folder.join(".nd");
     let profile = folder.join(".nd/dev");
     let run = folder.join(".nd/run");
 
     fs::create_dir_all(nd).expect("Should be able to create the `.nd` folder.");
 
-    if !quiet {
+    if !quiet && !silent {
         println!("Building flake at {}.", folder.display());
     }
 
-    let quiet_args = if quiet {
-        vec!["--quiet", "--quiet"]
-    } else {
-        vec![]
-    };
+    let mut cmd = Command::new("nix");
 
-    let output = Command::new("nix")
-        .arg("print-dev-env")
-        .args(quiet_args)
+    cmd.arg("print-dev-env")
         .arg("--profile")
         .arg(&profile)
-        .arg(folder)
-        .output()
-        .expect("Should be able to run `nix`");
+        .arg(folder);
+
+    if !quiet && !silent {
+        cmd.stderr(Stdio::inherit());
+    }
+
+    let output = cmd.output().expect("Should be able to run `nix`");
 
     if !output.status.success() {
-        panic!(
-            "Should run `nix print-dev-env` successfully: {}",
-            String::from_utf8(output.stderr).unwrap_or(String::from("Cannot read stderr."))
-        );
+        if silent {
+            panic!();
+        }
+        if quiet {
+            panic!(
+                "Running `nix print-dev-env` was not successful:\n{}",
+                String::from_utf8_lossy(&output.stderr),
+            );
+        } else {
+            panic!("Running `nix print-dev-env` was not successful.");
+        }
     }
 
     let profile = profile
@@ -302,7 +310,7 @@ fn cli_run(spec: &FlakeSpec, command: &[String], opts: &RunOpts) {
     let spec = spec.as_flake();
     if let Some(at) = resolve_flake(&spec, false) {
         if opts.build || (opts.build_if_missing && !at.join(".nd/run").is_file()) {
-            self::build(&at, false);
+            self::build(&at, false, false);
         }
         if opts.warn {
             maybe_warn(&at);
@@ -317,10 +325,14 @@ fn main() {
     let args = Cli::parse();
 
     match args.command {
-        Commands::Build { spec, quiet } => {
+        Commands::Build {
+            spec,
+            quiet,
+            silent,
+        } => {
             let flake = spec.as_flake();
             if let Some(at) = resolve_flake(&flake, quiet) {
-                build(&at, quiet);
+                build(&at, quiet, silent);
             }
         }
         Commands::Run {
