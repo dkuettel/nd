@@ -160,12 +160,20 @@ pub fn build(flake: &Flake, if_missing: bool) {
 
     let dev_env =
         String::from_utf8(output.stdout).expect("`nix print-dev-env` should produce utf8 output.");
+
     let script = format!(
-        "#!/usr/bin/env bash\n\n\
-         {dev_env}\n\n\
+        "#!/usr/bin/env bash\n\
+         \n\
+         original_shell=${{SHELL:-sh}}\n\
+         \n\
+         {dev_env}\n\
+         \n\
+         export SHELL=$original_shell\n\
          export nd_nix={profile_str}\n\
-         if [[ -v nd ]]; then export nd={folder_str}:$nd; else export nd={folder_str}; fi\n\n\
-         exec \"$@\"\n"
+         if [[ -v nd ]]; then export nd={folder_str}:$nd; else export nd={folder_str}; fi\n\
+         \n\
+         exec \"$@\"\n\
+        "
     );
 
     fs::write(&run, script.as_str())
