@@ -8,8 +8,6 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use clap::{Args, Parser, Subcommand};
-
 #[derive(Debug)]
 pub enum Volume {
     /// normal output
@@ -51,7 +49,6 @@ pub fn is_volume_included(vol: &Volume) -> bool {
 }
 
 #[allow(unused_macros)]
-#[macro_export]
 macro_rules! uprintln {
     ($vol:expr, $($arg:tt)*) => {
         if is_volume_included(&$vol) {
@@ -61,105 +58,12 @@ macro_rules! uprintln {
 }
 
 #[allow(unused_macros)]
-#[macro_export]
 macro_rules! ueprintln {
     ($vol:expr, $($arg:tt)*) => {
         if is_volume_included(&$vol) {
             eprintln!($($arg)*);
         }
     };
-}
-
-#[derive(Parser, Debug)]
-#[command(version, about, long_about=None)]
-#[command(infer_subcommands = true)]
-pub struct Cli {
-    /// little ouptut
-    #[arg(short, long)]
-    pub quiet: bool,
-    /// no output
-    #[arg(short, long)]
-    pub silent: bool,
-    #[command(subcommand)]
-    pub command: Commands,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum Commands {
-    /// build and save a dev shell in a profile for later use
-    #[command(visible_alias = "b")]
-    Build {
-        #[command(flatten)]
-        spec: FlakeSpec,
-        /// only build if missing
-        #[arg(short = 'm', long)]
-        if_missing: bool,
-    },
-
-    /// run a command in the latest dev shell
-    #[command(visible_alias = "r")]
-    Run {
-        #[command(flatten)]
-        spec: FlakeSpec,
-        /// command to run
-        #[arg(last = true)]
-        command: Vec<String>,
-        #[command(flatten)]
-        opts: RunOpts,
-    },
-
-    /// run an interactive dev shell using $SHELL
-    #[command(visible_alias = "s")]
-    Shell {
-        #[command(flatten)]
-        spec: FlakeSpec,
-        #[command(flatten)]
-        opts: RunOpts,
-        /// additional args to the $SHELL executable
-        #[arg(last = true)]
-        args: Vec<String>,
-    },
-
-    /// show general info
-    #[command(visible_alias = "i")]
-    Info {
-        #[command(flatten)]
-        spec: FlakeSpec,
-    },
-}
-
-#[derive(Args, Debug)]
-#[group(required = false, multiple = false)]
-pub struct FlakeSpec {
-    /// (default) first try env var `nd_env`, then try parent directories
-    #[arg(short = 'A', long, help_heading = "Flake specification")]
-    pub any: bool,
-    /// find a flake here or in parent directories, don't use env var `nd_env`
-    #[arg(short = 'H', long, help_heading = "Flake specification")]
-    pub here: bool,
-    /// force use of flake from env var `nd_env`, and fail otherwise
-    #[arg(short, long, help_heading = "Flake specification")]
-    pub env: bool,
-    /// use provided flake location, and fail otherwise
-    #[arg(short, long, help_heading = "Flake specification")]
-    pub at: Option<PathBuf>,
-}
-
-impl FlakeSpec {
-    pub fn as_flake(&self) -> Flake {
-        // TODO not validating yet if all args make sense, clap doesnt offer it in a typed manner I
-        // think
-        if let Some(ref at) = self.at {
-            return Flake::At { at: at.clone() };
-        }
-        if self.env {
-            return Flake::Env;
-        }
-        if self.here {
-            return Flake::Here;
-        }
-        Flake::Default
-    }
 }
 
 pub enum Flake {
@@ -169,23 +73,7 @@ pub enum Flake {
     At { at: PathBuf },
 }
 
-#[derive(Args, Debug)]
-pub struct RunOpts {
-    /// first build if there is no ready environment yet
-    #[arg(short = 'm', long)]
-    pub build_if_missing: bool,
-    /// warn if the ready environment is potentially out-of-date
-    #[arg(short, long)]
-    pub warn: bool,
-    /// build before running (always, no attempt is made to figure out if a build is necessary
-    /// other than what nix does itself, which means at least the context is built and copied to
-    /// the nix store)
-    #[arg(short, long)]
-    pub build: bool,
-}
-
-// TODO should we support pass-thru? i think we need it for tmux
-pub fn resolve_flake(flake: &Flake) -> Option<PathBuf> {
+fn resolve_flake(flake: &Flake) -> Option<PathBuf> {
     let path = match flake {
         Flake::Default => resolve_flake_default(),
         Flake::Here => resolve_flake_here(),
@@ -234,10 +122,18 @@ fn resolve_flake_at(at: &Path) -> Option<PathBuf> {
     }
 }
 
-pub fn build(folder: &Path) {
+pub fn build(flake: &Flake, if_missing: bool) {
+    let Some(folder) = resolve_flake(flake) else {
+        return;
+    };
+
     let nd = folder.join(".nd");
     let profile = folder.join(".nd/dev");
     let run = folder.join(".nd/run");
+
+    if if_missing && run.is_file() {
+        return;
+    }
 
     fs::create_dir_all(nd).expect("Should be able to create the `.nd` folder.");
 
@@ -248,7 +144,7 @@ pub fn build(folder: &Path) {
     cmd.arg("print-dev-env")
         .arg("--profile")
         .arg(&profile)
-        .arg(folder);
+        .arg(&folder);
 
     if is_volume_included(&Volume::Normal) {
         cmd.stderr(Stdio::inherit());
@@ -308,8 +204,12 @@ fn is_latest_lock_different(folder: &Path) -> Option<bool> {
     Some(current_data != latest_data)
 }
 
-pub fn maybe_warn(folder: &Path) {
-    match is_latest_build_old(folder) {
+pub fn maybe_warn(flake: &Flake) {
+    let Some(folder) = resolve_flake(flake) else {
+        return;
+    };
+
+    match is_latest_build_old(&folder) {
         Some(false) => {}
         Some(true) => uprintln!(Volume::Normal, "The last build is more than 7 days old."),
         None => uprintln!(
@@ -317,7 +217,8 @@ pub fn maybe_warn(folder: &Path) {
             "Cannot determine how recent the last build is."
         ),
     }
-    match is_latest_lock_different(folder) {
+
+    match is_latest_lock_different(&folder) {
         Some(false) => {}
         Some(true) => uprintln!(
             Volume::Normal,
@@ -350,35 +251,59 @@ pub fn maybe_warn(folder: &Path) {
 //     Array { value: Vec<String> },
 // }
 
-fn run(folder: Option<&Path>, command: &[String]) {
+pub fn run(flake: &Flake, command: &[String], build_if_missing: bool, warn: bool, build: bool) {
     assert!(
         !command.is_empty(),
         "The command needs at least an executable."
     );
 
-    let (run, args): (OsString, &[String]) = if let Some(folder) = folder {
+    let (run, args): (OsString, &[String]) = if let Some(folder) = resolve_flake(flake) {
+        if build || (build_if_missing && !folder.join(".nd/run").is_file()) {
+            self::build(flake, build_if_missing);
+        }
+        if warn {
+            maybe_warn(flake);
+        }
         (folder.join(".nd/run").into(), command)
     } else {
         let (run, args) = command.split_first().unwrap();
         (run.into(), args)
     };
 
-    // TODO what happens with rusts cleanup if we exec?
     let e = Command::new(run).args(args).exec();
     panic!("Should be able to exec: {}", e);
 }
 
-pub fn cli_run(spec: &FlakeSpec, command: &[String], opts: &RunOpts) {
-    let spec = spec.as_flake();
-    if let Some(at) = resolve_flake(&spec) {
-        if opts.build || (opts.build_if_missing && !at.join(".nd/run").is_file()) {
-            self::build(&at);
-        }
-        if opts.warn {
-            maybe_warn(&at);
-        }
-        run(Some(&at), command);
+pub fn run_shell(flake: &Flake, args: &[String], build_if_missing: bool, warn: bool, build: bool) {
+    let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
+    let mut command = vec![shell];
+    command.extend_from_slice(args);
+    run(flake, &command, build_if_missing, warn, build);
+}
+
+pub fn info(flake: &Flake) {
+    uprintln!(
+        Volume::Normal,
+        "$nd_env: {}",
+        std::env::var("nd_env").unwrap_or("<not set>".into())
+    );
+    uprintln!(
+        Volume::Normal,
+        "$nd: {}",
+        std::env::var("nd").unwrap_or("<not set>".into())
+    );
+    uprintln!(
+        Volume::Normal,
+        "$nd_nix: {}",
+        std::env::var("nd_nix").unwrap_or("<not set>".into())
+    );
+    if let Some(at) = resolve_flake(flake) {
+        uprintln!(Volume::Normal, "Resolving to flake at: {}", at.display());
+        maybe_warn(flake);
     } else {
-        run(None, command);
+        uprintln!(
+            Volume::Normal,
+            "Resolving to no flake as requested: Pass through mode."
+        );
     }
 }
