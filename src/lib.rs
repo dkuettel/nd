@@ -8,26 +8,19 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Volume {
-    /// normal output
-    Normal,
-    /// very little output, "nice to watch"
-    Quiet,
     /// no output at all
     Silent,
+    /// very little output, "nice to watch"
+    Quiet,
+    /// normal output
+    Normal,
 }
 
 impl Volume {
-    fn order(&self) -> u8 {
-        match self {
-            Volume::Normal => 1,
-            Volume::Quiet => 2,
-            Volume::Silent => 3,
-        }
-    }
     fn includes(&self, vol: &Volume) -> bool {
-        self.order() <= vol.order()
+        self >= vol // meaning the setting is as loud or louder than the volume in question
     }
 }
 
