@@ -1,5 +1,5 @@
 {
-  description = "POC for an easy and fast `nix develop` workflow.";
+  description = "nd - a fast nix develop wrapper for devShells";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
@@ -27,28 +27,42 @@
           mkdir -p $out
           ln -sfT ${./share} $out/share
         '';
+        rustToolchain = (
+          pkgs.rust-bin.stable.latest.default.override {
+            # see https://rust-lang.github.io/rustup/concepts/components.html
+            # and https://rust-lang.github.io/rustup/concepts/profiles.html
+            extensions = [
+              "rust-src"
+              "rust-analyzer"
+            ];
+          }
+        );
+        pkg = pkgs.rustPlatform.buildRustPackage {
+          pname = "nd";
+          version = "1.0.0";
+          src = ./.;
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+          };
+          nativeBuildInputs = [
+            rustToolchain
+          ];
+          meta = {
+            description = "nd - a fast nix develop wrapper for devShells";
+            homepage = "https://github.com/dkuettel/nd";
+            license = pkgs.lib.licenses.mit;
+            mainProgram = "nd";
+          };
+        };
       in
       {
-        packages.default = pkgs.stdenv.mkDerivation {
-          name = "nd";
-          src = ./pkg;
-          installPhase = ''
-            cp -r $src $out
-          '';
-        };
+        packages.default = pkg;
         packages.shell = shell;
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             nil # nix language server
             nixfmt # nix formatter
-            (rust-bin.stable.latest.default.override {
-              # see https://rust-lang.github.io/rustup/concepts/components.html
-              # and https://rust-lang.github.io/rustup/concepts/profiles.html
-              extensions = [
-                "rust-src"
-                "rust-analyzer"
-              ];
-            })
+            rustToolchain
           ];
           shellHook = ''
             if [[ -v h ]]; then
