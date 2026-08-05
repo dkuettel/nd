@@ -1,16 +1,12 @@
 now:
-- i still need what pmux does in the beginning, make it in rust? a warmstart or so?
-- and also the tmux entry point that can also work for an unset nd_env for normal operation
 - $SHELL is bash after entering, not sure we want that, custom overwrite?
 - something is wrong with my age checks when nested nds
-- all the checks now for age and lock and outdated could make it slow?
 - nd refresh or something? you can `exec nd shell` if you want to get the updated env, can we make that easier, or more obvious? or warn?
     - exec nd shell might actually nest things, not really what we want
 - nd build might not know flake authentication as in the flake alias we have?
-- it doesnt point to symlinked and atomically switchable envs, its all directly into nix
 - how to make a reusable tmux config for this?
 
-later:
-- two same `nd build` at the same time seems to build twice, nix doesnt make one wait?
+note:
+- two same `nd build` at the same time seems to build twice, nix doesnt lock, but also it's idempotent, so maybe not a problem
 - we start zsh, so bash functions are gone
     - but there are still a great many vars, some, like SHELL, is now wrong (not zsh)
