@@ -276,7 +276,7 @@ pub fn run(flake: &Flake, command: &[String], build_if_missing: bool, warn: bool
 }
 
 pub fn run_shell(flake: &Flake, args: &[String], build_if_missing: bool, warn: bool, build: bool) {
-    let shell = std::env::var("SHELL").unwrap_or(String::from("sh"));
+    let shell = std::env::var("SHELL").unwrap_or(String::from("/bin/sh"));
     let mut command = vec![shell];
     command.extend_from_slice(args);
     run(flake, &command, build_if_missing, warn, build);
