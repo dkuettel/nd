@@ -77,18 +77,16 @@ struct FlakeSpec {
     at: Option<PathBuf>,
 }
 
-impl FlakeSpec {
-    // TODO use into or from?
-    pub fn as_flake(&self) -> nd::Flake {
-        // TODO not validating yet if all args make sense, clap doesnt offer it in a typed manner I
-        // think
-        if let Some(ref at) = self.at {
+impl From<FlakeSpec> for nd::Flake {
+    fn from(value: FlakeSpec) -> Self {
+        // TODO not validating yet if all args make sense, clap doesnt offer it in a typed manner I think
+        if let Some(ref at) = value.at {
             return nd::Flake::At { at: at.clone() };
         }
-        if self.env {
+        if value.env {
             return nd::Flake::Env;
         }
-        if self.here {
+        if value.here {
             return nd::Flake::Here;
         }
         nd::Flake::Default
@@ -116,25 +114,25 @@ fn main() {
     nd::set_volume(args.quiet, args.silent);
 
     match args.command {
-        Commands::Build { spec, if_missing } => nd::build(&spec.as_flake(), if_missing),
+        Commands::Build { spec, if_missing } => nd::build(&spec.into(), if_missing),
         Commands::Run {
             spec,
             command,
             opts,
         } => nd::run(
-            &spec.as_flake(),
+            &spec.into(),
             &command,
             opts.build_if_missing,
             opts.warn,
             opts.build,
         ),
         Commands::Shell { spec, opts, args } => nd::run_shell(
-            &spec.as_flake(),
+            &spec.into(),
             &args,
             opts.build_if_missing,
             opts.warn,
             opts.build,
         ),
-        Commands::Info { spec } => nd::info(&spec.as_flake()),
+        Commands::Info { spec } => nd::info(&spec.into()),
     };
 }
