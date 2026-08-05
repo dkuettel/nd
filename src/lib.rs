@@ -92,7 +92,7 @@ fn resolve_flake_here() -> Option<PathBuf> {
     for dir in std::env::current_dir().unwrap().ancestors() {
         let at = dir.join("flake.nix");
         if at.is_file() {
-            return Some(at);
+            return Some(dir.into());
         }
     }
     panic!("Cannot find any flake around here.");
