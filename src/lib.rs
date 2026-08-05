@@ -74,7 +74,7 @@ fn resolve_flake(flake: &Flake) -> Option<PathBuf> {
         Flake::At { at } => resolve_flake_at(at),
     };
     match path {
-        Some(ref path) => uprintln!(Volume::Quiet, "Using flake at {}.", path.display()),
+        Some(ref path) => uprintln!(Volume::Quiet, "Using flake at {} .", path.display()),
         None => uprintln!(Volume::Quiet, "Using no flake, pass-through mode."),
     }
     path
