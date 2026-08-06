@@ -63,18 +63,21 @@ enum Commands {
 #[derive(Args, Debug)]
 #[group(required = false, multiple = false)]
 struct FlakeSpec {
-    /// (default) first try env var `nd_env`, then try parent directories
-    #[arg(short = 'A', long, help_heading = "Flake specification")]
-    any: bool,
-    /// find a flake here or in parent directories, don't use env var `nd_env`
-    #[arg(short = 'H', long, help_heading = "Flake specification")]
-    here: bool,
-    /// force use of flake from env var `nd_env`, and fail otherwise
-    #[arg(short, long, help_heading = "Flake specification")]
-    env: bool,
     /// use provided flake location, and fail otherwise
     #[arg(short, long, help_heading = "Flake specification")]
     at: Option<PathBuf>,
+    /// force use of flake from env var `nd_env`, and use pass-through otherwise
+    #[arg(short = 'E', long, help_heading = "Flake specification")]
+    maybe_env: bool,
+    /// force use of flake from env var `nd_env`, and fail otherwise
+    #[arg(short, long, help_heading = "Flake specification")]
+    env: bool,
+    /// find a flake here or in parent directories, don't use env var `nd_env`
+    #[arg(short = 'H', long, help_heading = "Flake specification")]
+    here: bool,
+    /// (default) first try env var `nd_env`, then try parent directories
+    #[arg(short = 'A', long, help_heading = "Flake specification")]
+    any: bool,
 }
 
 impl From<FlakeSpec> for nd::Flake {
@@ -82,6 +85,9 @@ impl From<FlakeSpec> for nd::Flake {
         // TODO not validating yet if all args make sense, clap doesnt offer it in a typed manner I think
         if let Some(ref at) = value.at {
             return nd::Flake::At { at: at.clone() };
+        }
+        if value.maybe_env {
+            return nd::Flake::MaybeEnv;
         }
         if value.env {
             return nd::Flake::Env;

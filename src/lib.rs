@@ -63,6 +63,7 @@ pub enum Flake {
     Default,
     Here,
     Env,
+    MaybeEnv,
     At { at: PathBuf },
 }
 
@@ -71,6 +72,7 @@ fn resolve_flake(flake: &Flake) -> Option<PathBuf> {
         Flake::Default => resolve_flake_default(),
         Flake::Here => resolve_flake_here(),
         Flake::Env => resolve_flake_env(),
+        Flake::MaybeEnv => resolve_flake_maybe_env(),
         Flake::At { at } => resolve_flake_at(at),
     };
     match path {
@@ -102,6 +104,15 @@ fn resolve_flake_env() -> Option<PathBuf> {
     let at = std::env::var("nd_env").expect("The env var `nd_env` should be set.");
     let at: PathBuf = at.into();
     resolve_flake_at(&at)
+}
+
+fn resolve_flake_maybe_env() -> Option<PathBuf> {
+    if let Ok(at) = std::env::var("nd_env") {
+        let at: PathBuf = at.into();
+        resolve_flake_at(&at)
+    } else {
+        None
+    }
 }
 
 fn resolve_flake_at(at: &Path) -> Option<PathBuf> {
