@@ -1,7 +1,6 @@
 
 function __nd_status {
     if [[ ! -v nd ]]; then
-        echo good
         return
     fi
 
@@ -11,9 +10,8 @@ function __nd_status {
 
     # NOTE NIX_GCROOT is not set when using print-dev-env, so we use our own
     if [[ -e $nd/.nd/dev && $(realpath $nd/.nd/dev) == ${nd_nix:-} ]]; then
-        echo good
         return
     fi
 
-    echo old
+    echo 'newer nd profile available'
 }
