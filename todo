@@ -1,6 +1,5 @@
 now:
-- too much output, resolve flake only once?
-    - and warn should always output, even in silent, dont ask for it, if you dont want it
+- warn should always output, even in silent, dont ask for it, if you dont want it
 - something is wrong with my age checks when nested nds
 - nd refresh or something? you can `exec nd shell` if you want to get the updated env, can we make that easier, or more obvious? or warn?
     - exec nd shell might actually nest things, not really what we want

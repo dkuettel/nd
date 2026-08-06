@@ -126,11 +126,14 @@ fn resolve_flake_at(at: &Path) -> Option<PathBuf> {
     }
 }
 
-pub fn build(flake: &Flake, if_missing: bool) {
+pub fn build_flake(flake: &Flake, if_missing: bool) {
     let Some(folder) = resolve_flake(flake) else {
         return;
     };
+    build_folder(&folder, if_missing);
+}
 
+fn build_folder(folder: &Path, if_missing: bool) {
     let nd = folder.join(".nd");
     let profile = folder.join(".nd/dev");
     let run = folder.join(".nd/run");
@@ -148,7 +151,7 @@ pub fn build(flake: &Flake, if_missing: bool) {
     cmd.arg("print-dev-env")
         .arg("--profile")
         .arg(&profile)
-        .arg(&folder);
+        .arg(folder);
 
     if is_volume_included(&Volume::Normal) {
         cmd.stderr(Stdio::inherit());
@@ -271,7 +274,7 @@ pub fn run(flake: &Flake, command: &[String], build_if_missing: bool, warn: bool
 
     let (run, args): (OsString, &[String]) = if let Some(folder) = resolve_flake(flake) {
         if build || (build_if_missing && !folder.join(".nd/run").is_file()) {
-            self::build(flake, build_if_missing);
+            self::build_folder(&folder, build_if_missing);
         }
         if warn {
             maybe_warn(flake);

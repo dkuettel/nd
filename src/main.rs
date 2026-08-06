@@ -120,7 +120,7 @@ fn main() {
     nd::set_volume(args.quiet, args.silent);
 
     match args.command {
-        Commands::Build { spec, if_missing } => nd::build(&spec.into(), if_missing),
+        Commands::Build { spec, if_missing } => nd::build_flake(&spec.into(), if_missing),
         Commands::Run {
             spec,
             command,
