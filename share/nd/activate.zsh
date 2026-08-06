@@ -1,8 +1,7 @@
 
-autoload -U add-zsh-hook
-
-function __nd_prompt_precmd {
+function __nd_status {
     if [[ ! -v nd ]]; then
+        echo good
         return
     fi
 
@@ -12,12 +11,9 @@ function __nd_prompt_precmd {
 
     # NOTE NIX_GCROOT is not set when using print-dev-env, so we use our own
     if [[ -e $nd/.nd/dev && $(realpath $nd/.nd/dev) == ${nd_nix:-} ]]; then
+        echo good
         return
     fi
 
-    echo
-    print -P -- '%F{1}%S'"nd: There is a newer profile at $at"'.%s%f'
+    echo old
 }
-
-# runs just before the prompt after a command, but not on redraw
-add-zsh-hook precmd __nd_prompt_precmd
