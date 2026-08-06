@@ -1,5 +1,4 @@
 now:
-- make some easy ones, like nd-run, or nd go? that dont need -- and have the most common args?
 - too much output, resolve flake only once?
     - and warn should always output, even in silent, dont ask for it, if you dont want it
 - $SHELL is bash after entering, not sure we want that, custom overwrite?
