@@ -226,9 +226,9 @@ pub fn maybe_warn(flake: &Flake) {
 
     match is_latest_build_old(&folder) {
         Some(false) => {}
-        Some(true) => uprintln!(Volume::Normal, "The last build is more than 7 days old."),
+        Some(true) => uprintln!(Volume::Silent, "The last build is more than 7 days old."),
         None => uprintln!(
-            Volume::Normal,
+            Volume::Silent,
             "Cannot determine how recent the last build is."
         ),
     }
@@ -236,11 +236,11 @@ pub fn maybe_warn(flake: &Flake) {
     match is_latest_lock_different(&folder) {
         Some(false) => {}
         Some(true) => uprintln!(
-            Volume::Normal,
+            Volume::Silent,
             "Flake.lock has changed since the last build."
         ),
         None => uprintln!(
-            Volume::Normal,
+            Volume::Silent,
             "Cannot determine if flake.lock has changed."
         ),
     }
