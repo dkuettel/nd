@@ -1,7 +1,6 @@
 now:
 - too much output, resolve flake only once?
     - and warn should always output, even in silent, dont ask for it, if you dont want it
-- $SHELL is bash after entering, not sure we want that, custom overwrite?
 - something is wrong with my age checks when nested nds
 - nd refresh or something? you can `exec nd shell` if you want to get the updated env, can we make that easier, or more obvious? or warn?
     - exec nd shell might actually nest things, not really what we want
@@ -10,5 +9,4 @@ now:
 
 note:
 - two same `nd build` at the same time seems to build twice, nix doesnt lock, but also it's idempotent, so maybe not a problem
-- we start zsh, so bash functions are gone
-    - but there are still a great many vars, some, like SHELL, is now wrong (not zsh)
+- bash functions dont survive into exec zsh
