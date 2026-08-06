@@ -1,78 +1,144 @@
-# nd (nix develop)
+# nd - A Fast Nix Develop Wrapper
 
-POC for an easy and fast `nix develop` workflow that works well with
-tmux.
+Are you using nixos and flakes? In that case: Good news, `nd` might be
+for you!
 
-## usage
+This `nd` is a wrapper around `nix develop` and makes it lightning fast,
+so fast in fact that you won't notice the difference between starting a
+new shell and starting a new devShell in, eg, your `tmux`.
 
-- `nd build` or `nd b` will build a devShell.
-- `nd shell` or `nd s` or `nd` will start a devShell.
-- `nd run something` or `nd r something` will run `something` inside a
-  devShell.
+The workflow is very similar to how you would use a python virtualenv's
+`activate` or `uv run`.
 
-By default, it first looks at env var `nd_env` for a flake location, and
-then for any flake in the current folder or a parent folders. It uses
-the default shell (`#default`). These defaults can be circumvented with
-`nd at ...` and `nd env ...`, see below.
+A typical `tmux` usage goes like:
 
-All of the above commands can also be started with `nd at flakeref ...`
-to use a different flake. For example
-`nd at ~/fun/project run cargo --version` will use that devShell even
-when you are in a different folder. Only local flake references are
-allowed:
+- `nd tmux` - start a `tmux` session in project with a `flake.nix`.
+- Now every new pane you open in `tmux` is automatically a devShell, no
+  delay.
+- `nd build` will rebuild if the devShell has changed.
 
-- `../somewhere/here`
-- `../somewhere/here#name`
-- `path:../somewhere/here`
-
-Additionally, the flake reference `-` is allowed. It means no flake, and
-`nd run something` runs `something` normally, without a devShell.
-
-Alternatively, if there is an env var `nd_env`, then you can also use
-`nd env ...` or `nd e ...` to use the flake reference pointed at by
-`nd_env`. This is mostly useful for `tmux`, see below.
-`nd env run something` just runs `something` normally, if there is no
-`nd_env`.
-
-The cached devShell is in `.nd`. You have to explicitely rebuild. It
-will only build automatically if there is no cached devShell yet. The
-cached devShell's `.nd` will always be at the referenced flake's
-location, which is not necessarily your project's root.
-
-Remember that a flake's `shellHook` is run in the current directory, and
-not necessarily in the project root, and therefore something like
-`export PATH=$PWD/bin:$PATH` is not very robust.
-
-## tmux
-
-Set the `default-shell` of tmux to `tmux-nd-shell`. In tmux.conf:
-
-``` tmux
-run-shell -b 'tmux set-option -g default-shell `which tmux-nd-shell`'
-```
-
-Then run a tmux session with the env var `nd_env` set to the project's
-flake reference. Every shell inside that tmux session will now be a
+If you don't work in `tmux`, you might just `nd shell` to spin up a
+devShell, or maybe `nd run -- nvim` to run some other binary inside a
 devShell.
 
-``` bash
-tmux new-session -e nd_env=$HOME/fun/project
+I won't lie to you, it is a pretty thin wrapper around `nix develop`,
+and depending on how much you care about the responsiveness of your
+terminal, you could be totally fine with plain `nix develop`.
+
+## The Approach
+
+It uses nix's own profile-functionality to build and cache devShell.
+They will be saved in `./.nd/dev-?-link` symlinks. This also prevents it
+from being garbage collected out of the nix store. See [garbage
+collector
+roots](https://nix.dev/manual/nix/2.34/package-management/garbage-collector-roots.html).
+
+So, `nd build` might be slow, depending on your flake, but `nd run` will
+be fast, as there is no `nix` involved anywhere, the profile is loaded
+in an instant. You could even manually use `./.nd/run` instead of the
+`nd *` commands if you wanted. That `./.nd/run` is akin to a python
+virtualenv's `activate`.
+
+## So Fast - What's The Catch?
+
+Unlike some other `nix develop` wrappers, `nd` doesnt make any attempt
+to automatically `nd build` when the flake has changed. Such an
+automatic build has two problems that I like to avoid:
+
+- Unexpected rebuilds can introduce unwanted delays in your workflow.
+- Detecting when a rebuild is needed is notoriously difficult with
+  flakes. Ultimately, you have to build the context and evaluate. At
+  that point you already have a noticeable delay. Other solutions that
+  don't build the context first are heuristics that don't always work.
+
+Therefore, the catch is: You yourself have to `nd build` whenever
+needed. `nd` will warn you when your last build is very old, or when the
+`flake.lock` has changed, but it will never rebuild for you unasked.
+
+Nothing of course stops you from wrapping `nd` again with some smart
+rebuild logic for your current project. A generic automatic rebuild is
+not feasible with speed in mind, but the game changes when it is only
+for a very specific project layout.
+
+## Install
+
+This is a flake. If you use nixos, you should know how to use it.
+
+Add it to the flake inputs:
+
+``` nix
+nd.url = "github:dkuettel/nd/main";
 ```
 
-Note that you cannot use `~` here, it won't be expanded. That is `zsh`
-behaviour, not `nd` behaviour.
+And then add it to the installed packages:
 
-Or use `nd tmux [folder]` to start an `nd`-enabled session. The
-session's folder will be the current folder by default. The session's nd
-flake can be from a different place when using
-`nd at ~/other/place tmux`. Otherwise, it is searched upward from
-`[folder]`.
-
-If you have things you run on shortcuts within tmux, and if they should
-(sometimes) use `nd`, a convenient way is to map it to
-`nd env run something`. It will work no matter if `nd_env` is set or
-not.
-
-``` bash
-tmux bind-key g run-shell -b 'nd env run something --arg value'
+``` nix
+environment.systemPackages = [nd.packages.${pkgs.stdenv.hostPlatform.system}.default];
 ```
+
+Or with `home-manager`:
+
+``` nix
+home-manager.users.USER.home.packages = [nd.packages.${pkgs.stdenv.hostPlatform.system}.default];
+```
+
+Optionally, you can use the flake's output `shell` to add functionality
+to `zsh`. In your `.zshrc` or similar, first source
+`${nd.packages.${pkgs.stdenv.hostPlatform.system}.shell}/share/nd/activate.zsh`
+and then you can use the `zsh` function `__nd_status` in the prompt, for
+example:
+
+``` zsh
+export PS1='... $(__nd_status) ...'
+```
+
+This will show you a small warning when the current shell is using an
+old devShell profile due to a recent rebuild.
+
+## Tmux
+
+In order to use it with `tmux`, configure it to use `nd` to start new
+panes:
+
+``` tmux
+set-option -g default-command nd-tmux-default-command
+```
+
+This will make it respect the env var `nd_env` when in tmux. If `nd_env`
+points to the folder of a `flake.nix`, then that devShell will be used
+for tmux. If `nd_env` is set to `-` then no devShell will be used. It is
+an error if you forget to set `nd_env`.
+
+To run tmux bindings that should execute something in a devShell, use,
+eg:
+
+``` tmux
+bind-key g run-shell -b 'nd-tmux-run something --opt arg1 arg2'
+```
+
+## If You Are Still Here
+
+Only the following flake references are supported:
+
+- Plain local paths to a folder with a `flake.nix` in it.
+- `path:some/folder` to use a path (ie, not git) flake, see [flake
+  references](https://nix.dev/manual/nix/2.18/command-ref/new-cli/nix3-flake.html#path-like-syntax).
+- `some/folder#name` to use a non-default devShell from a flake.
+- `-` to indicate no devShell, ie, `nd run --at=- nvim` will just be
+  `nvim`.
+
+Note in particular that currenly remote flakes (like
+`github:someone/something/branch`) are not supported.
+
+The main binary is `nd`, but there is also:
+
+- `nd-run` short for `nd --silent run --build-if-missing -- ...`.
+  Aliased to `nr` makes it easy to run things with different devShells
+  on the spot.
+- `nd-tmux-default-command` and `nd-tmux-run` as seen above for the
+  `tmux` configuration.
+
+As always,\
+`nd --help` is your friend.\
+Sincerely,\
+end of data.

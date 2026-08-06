@@ -1,5 +1,5 @@
 {
-  description = "nd - a fast nix develop wrapper for devShells";
+  description = "nd - a fast nix develop wrapper";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
@@ -48,7 +48,7 @@
             rustToolchain
           ];
           meta = {
-            description = "nd - a fast nix develop wrapper for devShells";
+            description = "nd - a fast nix develop wrapper";
             homepage = "https://github.com/dkuettel/nd";
             license = pkgs.lib.licenses.mit;
             mainProgram = "nd";
