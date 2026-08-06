@@ -1,7 +1,5 @@
 
-autoload -U add-zsh-hook
-
-function __nd_prompt_precmd {
+function __nd_status {
     if [[ ! -v nd ]]; then
         return
     fi
@@ -15,9 +13,5 @@ function __nd_prompt_precmd {
         return
     fi
 
-    echo
-    print -P -- '%F{1}%S'"nd: There is a newer profile at $at"'.%s%f'
+    echo 'newer nd profile available'
 }
-
-# runs just before the prompt after a command, but not on redraw
-add-zsh-hook precmd __nd_prompt_precmd

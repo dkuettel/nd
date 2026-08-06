@@ -1,9 +1,14 @@
 {
-  description = "POC for an easy and fast `nix develop` workflow.";
+  description = "nd - a fast nix develop wrapper";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
+    rust-overlay = {
+      # see https://github.com/oxalica/rust-overlay
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -11,29 +16,54 @@
       self,
       nixpkgs,
       flake-utils,
+      rust-overlay,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
+        overlays = [ (import rust-overlay) ];
+        pkgs = import nixpkgs { inherit system overlays; };
         shell = pkgs.runCommandLocal "shell" { } ''
           mkdir -p $out
           ln -sfT ${./share} $out/share
         '';
+        rustToolchain = (
+          pkgs.rust-bin.stable.latest.default.override {
+            # see https://rust-lang.github.io/rustup/concepts/components.html
+            # and https://rust-lang.github.io/rustup/concepts/profiles.html
+            extensions = [
+              "rust-src"
+              "rust-analyzer"
+            ];
+          }
+        );
+        pkg = pkgs.rustPlatform.buildRustPackage {
+          pname = "nd";
+          version = "1.0.0";
+          src = ./.;
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+          };
+          nativeBuildInputs = [
+            rustToolchain
+          ];
+          meta = {
+            description = "nd - a fast nix develop wrapper";
+            homepage = "https://github.com/dkuettel/nd";
+            license = pkgs.lib.licenses.mit;
+            mainProgram = "nd";
+          };
+        };
       in
       {
-        packages.default = pkgs.stdenv.mkDerivation {
-          name = "nd";
-          src = ./pkg;
-          installPhase = ''
-            cp -r $src $out
-          '';
-        };
+        packages.default = pkg;
+        # TODO this is non-standard, would be cool to setup some `nixosModules.default = ...` to have it easy for managed zsh?
         packages.shell = shell;
-        devShells.default = pkgs.mkShellNoCC {
+        devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             nil # nix language server
-            nixfmt-rfc-style # nixpkgs-fmt is deprecated
+            nixfmt # nix formatter
+            rustToolchain
           ];
           shellHook = ''
             if [[ -v h ]]; then
@@ -45,14 +75,4 @@
         };
       }
     );
-  # TODO lets see if we can offer more useful integration
-  # // {
-  #   nixosModules.default =
-  #     { config, ... }:
-  #     {
-  #       options = { };
-  #       config = { };
-  #     };
-  #
-  # };
 }
