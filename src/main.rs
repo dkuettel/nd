@@ -64,12 +64,18 @@ enum Commands {
 #[group(required = false, multiple = false)]
 struct FlakeSpec {
     /// use provided flake location, and fail otherwise
+    /// accepts only local flakes in the form of: [path:]some/path[#name]
+    /// accepts '-' for no flake
     #[arg(short, long, help_heading = "Flake specification")]
     at: Option<PathBuf>,
     /// force use of flake from env var `nd_env`, and use pass-through otherwise
+    /// accepts only local flakes in the form of: [path:]some/path[#name]
+    /// accepts '-' for no flake
     #[arg(short = 'E', long, help_heading = "Flake specification")]
     maybe_env: bool,
     /// force use of flake from env var `nd_env`, and fail otherwise
+    /// accepts only local flakes in the form of: [path:]some/path[#name]
+    /// accepts '-' for no flake
     #[arg(short, long, help_heading = "Flake specification")]
     env: bool,
     /// find a flake here or in parent directories, don't use env var `nd_env`

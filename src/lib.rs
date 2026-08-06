@@ -1,3 +1,4 @@
+use regex::regex;
 use std::{
     ffi::OsString,
     fs,
@@ -67,22 +68,40 @@ pub enum Flake {
     At { at: PathBuf },
 }
 
-fn resolve_flake(flake: &Flake) -> Option<PathBuf> {
-    let path = match flake {
+struct ResolvedFlake {
+    /// the actual local folder, used of .nd/* stuff
+    folder: PathBuf,
+    /// the nix flake spec, not always a real path, could be 'path:some/thing#name' and similar
+    spec: PathBuf,
+}
+
+fn resolve_flake(flake: &Flake) -> Option<ResolvedFlake> {
+    let res = match flake {
         Flake::Default => resolve_flake_default(),
         Flake::Here => resolve_flake_here(),
         Flake::Env => resolve_flake_env(),
         Flake::MaybeEnv => resolve_flake_maybe_env(),
         Flake::At { at } => resolve_flake_at(at),
     };
-    match path {
-        Some(ref path) => uprintln!(Volume::Quiet, "Using flake at {} .", path.display()),
-        None => uprintln!(Volume::Quiet, "Using no flake, pass-through mode."),
+    match &res {
+        Some(ResolvedFlake { folder, spec }) => {
+            if folder == spec {
+                uprintln!(Volume::Quiet, "Resolved to flake at {} .", folder.display())
+            } else {
+                uprintln!(
+                    Volume::Quiet,
+                    "Resolved to flake at {} from spec {} .",
+                    folder.display(),
+                    spec.display()
+                )
+            }
+        }
+        None => uprintln!(Volume::Quiet, "Resolved to no flake, pass-through mode."),
     }
-    path
+    res
 }
 
-fn resolve_flake_default() -> Option<PathBuf> {
+fn resolve_flake_default() -> Option<ResolvedFlake> {
     if std::env::var("nd_env").is_ok() {
         resolve_flake_env()
     } else {
@@ -90,23 +109,25 @@ fn resolve_flake_default() -> Option<PathBuf> {
     }
 }
 
-fn resolve_flake_here() -> Option<PathBuf> {
-    for dir in std::env::current_dir().unwrap().ancestors() {
-        let at = dir.join("flake.nix");
-        if at.is_file() {
-            return Some(dir.into());
+fn resolve_flake_here() -> Option<ResolvedFlake> {
+    for at in std::env::current_dir().unwrap().ancestors() {
+        if at.join("flake.nix").is_file() {
+            return Some(ResolvedFlake {
+                folder: at.into(),
+                spec: at.into(),
+            });
         }
     }
     panic!("Cannot find any flake around here.");
 }
 
-fn resolve_flake_env() -> Option<PathBuf> {
+fn resolve_flake_env() -> Option<ResolvedFlake> {
     let at = std::env::var("nd_env").expect("The env var `nd_env` should be set.");
     let at: PathBuf = at.into();
     resolve_flake_at(&at)
 }
 
-fn resolve_flake_maybe_env() -> Option<PathBuf> {
+fn resolve_flake_maybe_env() -> Option<ResolvedFlake> {
     if let Ok(at) = std::env::var("nd_env") {
         let at: PathBuf = at.into();
         resolve_flake_at(&at)
@@ -115,28 +136,43 @@ fn resolve_flake_maybe_env() -> Option<PathBuf> {
     }
 }
 
-fn resolve_flake_at(at: &Path) -> Option<PathBuf> {
-    if at.to_str().expect("Flake path should be utf8.") == "-" {
-        None
-    } else {
-        if !at.join("flake.nix").is_file() {
-            panic!("There should be a flake.nix at {}.", at.display());
+fn resolve_flake_at(at: &Path) -> Option<ResolvedFlake> {
+    if let Some(spec) = at.to_str() {
+        if spec == "-" {
+            return None;
+        } else if let Some(matches) =
+            regex!(r"(?<protocol>path:)?(?<path>[^#].*)(#(?<name>.*))?").captures(spec)
+        {
+            let folder: PathBuf = matches["path"].into();
+            if !folder.join("flake.nix").is_file() {
+                panic!("There should be a flake.nix at {}.", folder.display());
+            }
+            return Some(ResolvedFlake {
+                folder,
+                spec: spec.into(),
+            });
         }
-        Some(at.into())
     }
+    if !at.join("flake.nix").is_file() {
+        panic!("There should be a flake.nix at {}.", at.display());
+    }
+    Some(ResolvedFlake {
+        folder: at.into(),
+        spec: at.into(),
+    })
 }
 
 pub fn build_flake(flake: &Flake, if_missing: bool) {
-    let Some(folder) = resolve_flake(flake) else {
+    let Some(flake) = resolve_flake(flake) else {
         return;
     };
-    build_folder(&folder, if_missing);
+    build_folder(&flake, if_missing);
 }
 
-fn build_folder(folder: &Path, if_missing: bool) {
-    let nd = folder.join(".nd");
-    let profile = folder.join(".nd/dev");
-    let run = folder.join(".nd/run");
+fn build_folder(flake: &ResolvedFlake, if_missing: bool) {
+    let nd = flake.folder.join(".nd");
+    let profile = flake.folder.join(".nd/dev");
+    let run = flake.folder.join(".nd/run");
 
     if if_missing && run.is_file() {
         return;
@@ -144,20 +180,24 @@ fn build_folder(folder: &Path, if_missing: bool) {
 
     fs::create_dir_all(nd).expect("Should be able to create the `.nd` folder.");
 
-    uprintln!(Volume::Normal, "Building flake at {}.", folder.display());
+    uprintln!(
+        Volume::Normal,
+        "Building flake at {}.",
+        flake.folder.display()
+    );
 
     let mut cmd = Command::new("nix");
 
     cmd.arg("print-dev-env")
         .arg("--profile")
         .arg(&profile)
-        .arg(folder);
+        .arg(&flake.spec);
 
     if is_volume_included(&Volume::Normal) {
         cmd.stderr(Stdio::inherit());
     }
 
-    let output = cmd.output().expect("Should be able to run `nix`");
+    let output = cmd.output().expect("Should be able to run `nix`.");
 
     if !output.status.success() {
         panic!(
@@ -170,7 +210,7 @@ fn build_folder(folder: &Path, if_missing: bool) {
         .canonicalize()
         .expect("Should be able to follow `.nd/dev` symlinks to the nix store.");
     let profile_str = profile.to_str().unwrap();
-    let folder_str = folder.to_str().unwrap();
+    let folder_str = flake.folder.to_str().unwrap();
 
     let dev_env =
         String::from_utf8(output.stdout).expect("`nix print-dev-env` should produce utf8 output.");
@@ -196,35 +236,31 @@ fn build_folder(folder: &Path, if_missing: bool) {
     fs::set_permissions(&run, fs::Permissions::from_mode(0o755))
         .expect("Should have write access for the `.nd/run` script file.");
 
-    let lock = folder.join("flake.lock");
-    let nd_lock = folder.join(".nd/flake.lock");
+    let lock = flake.folder.join("flake.lock");
+    let nd_lock = flake.folder.join(".nd/flake.lock");
     fs::copy(lock, nd_lock).expect("There should be a flake.lock.");
 }
 
-fn is_latest_build_old(folder: &Path) -> Option<bool> {
-    let profile = folder.join(".nd/dev");
+fn is_latest_build_old(flake: &ResolvedFlake) -> Option<bool> {
+    let profile = flake.folder.join(".nd/dev");
     let metadata = profile.symlink_metadata().ok()?;
     let mtime = metadata.modified().ok()?;
     let dt = SystemTime::now().duration_since(mtime).ok()?;
     Some(dt > Duration::from_hours(7 * 24))
 }
 
-fn is_latest_lock_different(folder: &Path) -> Option<bool> {
-    let current = folder.join("flake.lock");
+fn is_latest_lock_different(flake: &ResolvedFlake) -> Option<bool> {
+    let current = flake.folder.join("flake.lock");
     let current_data = fs::read(current).ok()?;
 
-    let latest = folder.join(".nd/flake.lock");
+    let latest = flake.folder.join(".nd/flake.lock");
     let latest_data = fs::read(latest).ok()?;
 
     Some(current_data != latest_data)
 }
 
-pub fn maybe_warn(flake: &Flake) {
-    let Some(folder) = resolve_flake(flake) else {
-        return;
-    };
-
-    match is_latest_build_old(&folder) {
+fn maybe_warn(flake: &ResolvedFlake) {
+    match is_latest_build_old(flake) {
         Some(false) => {}
         Some(true) => uprintln!(Volume::Silent, "The last build is more than 7 days old."),
         None => uprintln!(
@@ -233,7 +269,7 @@ pub fn maybe_warn(flake: &Flake) {
         ),
     }
 
-    match is_latest_lock_different(&folder) {
+    match is_latest_lock_different(flake) {
         Some(false) => {}
         Some(true) => uprintln!(
             Volume::Silent,
@@ -272,14 +308,14 @@ pub fn run(flake: &Flake, command: &[String], build_if_missing: bool, warn: bool
         "The command needs at least an executable."
     );
 
-    let (run, args): (OsString, &[String]) = if let Some(folder) = resolve_flake(flake) {
-        if build || (build_if_missing && !folder.join(".nd/run").is_file()) {
-            self::build_folder(&folder, build_if_missing);
+    let (run, args): (OsString, &[String]) = if let Some(flake) = resolve_flake(flake) {
+        if build || (build_if_missing && !flake.folder.join(".nd/run").is_file()) {
+            self::build_folder(&flake, build_if_missing);
         }
         if warn {
-            maybe_warn(flake);
+            maybe_warn(&flake);
         }
-        (folder.join(".nd/run").into(), command)
+        (flake.folder.join(".nd/run").into(), command)
     } else {
         let (run, args) = command.split_first().unwrap();
         (run.into(), args)
@@ -312,13 +348,7 @@ pub fn info(flake: &Flake) {
         "$nd_nix: {}",
         std::env::var("nd_nix").unwrap_or("<not set>".into())
     );
-    if let Some(at) = resolve_flake(flake) {
-        uprintln!(Volume::Normal, "Resolving to flake at: {}", at.display());
-        maybe_warn(flake);
-    } else {
-        uprintln!(
-            Volume::Normal,
-            "Resolving to no flake as requested: Pass through mode."
-        );
+    if let Some(flake) = resolve_flake(flake) {
+        maybe_warn(&flake);
     }
 }

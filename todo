@@ -1,4 +1,6 @@
 now:
+- no flup checks or warnings anymore, when should they happen? and for who?
+- nd tmux to create a tmux with the --here project?
 - something is wrong with my age checks when nested nds
 - nd refresh or something? you can `exec nd shell` if you want to get the updated env, can we make that easier, or more obvious? or warn?
     - exec nd shell might actually nest things, not really what we want
