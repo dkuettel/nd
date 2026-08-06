@@ -57,6 +57,7 @@
       in
       {
         packages.default = pkg;
+        # TODO this is non-standard, would be cool to setup some `nixosModules.default = ...` to have it easy for managed zsh?
         packages.shell = shell;
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
@@ -74,14 +75,4 @@
         };
       }
     );
-  # TODO lets see if we can offer more useful integration
-  # // {
-  #   nixosModules.default =
-  #     { config, ... }:
-  #     {
-  #       options = { };
-  #       config = { };
-  #     };
-  #
-  # };
 }
