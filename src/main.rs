@@ -52,6 +52,14 @@ enum Commands {
         args: Vec<String>,
     },
 
+    /// start an nd-tmux session for the specified flake
+    /// (requires that your tmux config is set up to use nd-tmux-default-command)
+    #[command(visible_alias = "t")]
+    Tmux {
+        #[command(flatten)]
+        spec: FlakeSpec,
+    },
+
     /// show general info
     #[command(visible_alias = "i")]
     Info {
@@ -145,6 +153,7 @@ fn main() {
             opts.warn,
             opts.build,
         ),
+        Commands::Tmux { spec } => nd::tmux(&spec.into()),
         Commands::Info { spec } => nd::info(&spec.into()),
     };
 }

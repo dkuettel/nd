@@ -166,10 +166,10 @@ pub fn build_flake(flake: &Flake, if_missing: bool) {
     let Some(flake) = resolve_flake(flake) else {
         return;
     };
-    build_folder(&flake, if_missing);
+    build_resolved(&flake, if_missing);
 }
 
-fn build_folder(flake: &ResolvedFlake, if_missing: bool) {
+fn build_resolved(flake: &ResolvedFlake, if_missing: bool) {
     let nd = flake.folder.join(".nd");
     let profile = flake.folder.join(".nd/dev");
     let run = flake.folder.join(".nd/run");
@@ -310,7 +310,7 @@ pub fn run(flake: &Flake, command: &[String], build_if_missing: bool, warn: bool
 
     let (run, args): (OsString, &[String]) = if let Some(flake) = resolve_flake(flake) {
         if build || (build_if_missing && !flake.folder.join(".nd/run").is_file()) {
-            self::build_folder(&flake, build_if_missing);
+            self::build_resolved(&flake, build_if_missing);
         }
         if warn {
             maybe_warn(&flake);
@@ -330,6 +330,32 @@ pub fn run_shell(flake: &Flake, args: &[String], build_if_missing: bool, warn: b
     let mut command = vec![shell];
     command.extend_from_slice(args);
     run(flake, &command, build_if_missing, warn, build);
+}
+
+fn session_name_from_path(path: Option<&Path>) -> Option<String> {
+    Some(path?.file_name()?.to_string_lossy().into())
+}
+
+pub fn tmux(flake: &Flake) {
+    let mut cmd = Command::new("tmux");
+    cmd.arg("new-session");
+
+    if let Some(flake) = resolve_flake(flake) {
+        build_resolved(&flake, true);
+        if let Some(name) = session_name_from_path(Some(&flake.folder)) {
+            cmd.args(["-s".into(), name]);
+        }
+        // NOTE this wont work if the paths are not utf8
+        cmd.args(["-e".into(), format!("h={}", flake.folder.display())]);
+        cmd.args(["-e".into(), format!("nd_env={}", flake.spec.display())]);
+    } else {
+        if let Some(name) = session_name_from_path(std::env::current_dir().ok().as_deref()) {
+            cmd.args(["-s".into(), name]);
+        }
+    };
+
+    let e = cmd.exec();
+    panic!("Should be able to exec: {}", e);
 }
 
 pub fn info(flake: &Flake) {
