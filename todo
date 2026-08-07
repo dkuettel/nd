@@ -1,4 +1,5 @@
-now:
+soon:
+- should have nicer error output for user errors
 - no flup checks or warnings anymore, when should they happen? and for who?
 - something is wrong with my age checks when nested nds
 - nd refresh or something? you can `exec nd shell` if you want to get the updated env, can we make that easier, or more obvious? or warn?
