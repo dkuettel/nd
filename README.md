@@ -15,7 +15,7 @@ A typical `tmux` usage goes like:
 - `nd tmux` - start a `tmux` session in project with a `flake.nix`.
 - Now every new pane you open in `tmux` is automatically a devShell, no
   delay.
-- `nd build` will rebuild if the devShell has changed.
+- `nd build` will rebuild the devShell if it has changed.
 
 If you don't work in `tmux`, you might just `nd shell` to spin up a
 devShell, or maybe `nd run -- nvim` to run some other binary inside a
@@ -84,7 +84,7 @@ home-manager.users.USER.home.packages = [nd.packages.${pkgs.stdenv.hostPlatform.
 
 Optionally, you can use the flake's output `shell` to add functionality
 to `zsh`. In your `.zshrc` or similar, first source
-`${nd.packages.${pkgs.stdenv.hostPlatform.system}.shell}/share/nd/activate.zsh`
+`${nd.packages.${pkgs.stdenv.hostPlatform.system}.shell}/share/nd/activate.zsh`,
 and then you can use the `zsh` function `__nd_status` in the prompt, for
 example:
 
@@ -106,8 +106,8 @@ set-option -g default-command nd-tmux-default-command
 
 This will make it respect the env var `nd_env` when in tmux. If `nd_env`
 points to the folder of a `flake.nix`, then that devShell will be used
-for tmux. If `nd_env` is set to `-` then no devShell will be used. It is
-an error if you forget to set `nd_env`.
+for tmux. If `nd_env` is set to `-`, then no devShell will be used. It
+is an error if you forget to set `nd_env`.
 
 To run tmux bindings that should execute something in a devShell, use,
 eg:
