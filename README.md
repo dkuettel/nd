@@ -12,7 +12,7 @@ The workflow is very similar to how you would use a python virtualenv's
 
 A typical `tmux` usage goes like:
 
-- `nd tmux` - start a `tmux` session in project with a `flake.nix`.
+- `nd tmux` - start a `tmux` session in a project with a `flake.nix`.
 - Now every new pane you open in `tmux` is automatically a devShell, no
   delay.
 - `nd build` will rebuild the devShell if it has changed.
@@ -38,6 +38,8 @@ be fast, as there is no `nix` involved anywhere, the profile is loaded
 in an instant. You could even manually use `./.nd/run` instead of the
 `nd *` commands if you wanted. That `./.nd/run` is akin to a python
 virtualenv's `activate`.
+
+The `.nd` folder is always next to the `flake.nix` being used.
 
 ## So Fast - What's The Catch?
 
