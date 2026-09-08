@@ -1,4 +1,10 @@
 soon:
+- we run the bash script .nd/run, and that execs zsh or other stuff
+    - that means the shellHook is still running inside bash, so
+        - we dont get zsh syntax
+        - many things dont survive into zsh later, like functions and aliases and fpath stuff
+        - I think that is only a problem for starting a shell later
+        - for other binaries that would also have been the case for a native nix dev approach
 - should have nicer error output for user errors
 - no flup checks or warnings anymore, when should they happen? and for who?
 - something is wrong with my age checks when nested nds
