@@ -1,10 +1,20 @@
 soon:
+- support fhs in some way too
+    - could detect from a plain devShell if it is one of them?
+    - might be easier to start an nd.blabla output, and fall back
+    - see geom project, but env as init, and wrapping ssh, and maybe we could make the envs cleaner?
+    - result/bin/fhs actually works well, allows args, can be execed
+- tmux respawn-pane -k ... should work to reload nd! `rend` aliased right now, but add it to options and co
+    - not quite, still stacks PATH, need to get it from tmux somehow? the original path?
 - we run the bash script .nd/run, and that execs zsh or other stuff
     - that means the shellHook is still running inside bash, so
         - we dont get zsh syntax
         - many things dont survive into zsh later, like functions and aliases and fpath stuff
         - I think that is only a problem for starting a shell later
         - for other binaries that would also have been the case for a native nix dev approach
+- maybe have a switch that allows verbose rebuild on more than 7 days? for tmux startup?
+- add a tmux status entrypoint for expensive things like checking for out of date
+    - and maybe remove the current 7 days thing?
 - should have nicer error output for user errors
 - no flup checks or warnings anymore, when should they happen? and for who?
 - something is wrong with my age checks when nested nds
